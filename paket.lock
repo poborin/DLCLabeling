@@ -66,3 +66,4 @@ NUGET
       Feliz (>= 1.17 < 2.0)
       FSharp.Core (>= 4.7.2)
     FSharp.Core (5.0.2)
+    YamlDotNet (11.2.1)

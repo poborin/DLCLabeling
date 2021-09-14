@@ -4,35 +4,35 @@ open Feliz
 open Feliz.UseElmish
 open Elmish
 open Feliz.Bulma
+open System.IO
+open YamlDotNet.RepresentationModel
+open System.Collections
 
 type Msg =
-    | Increment
-    | Decrement
+    | LoadConfig
 
-type State = { Count : int }
+type State = { Config : Generic.IList<YamlDocument> }
 
-let init() = { Count = 0 }, Cmd.none
+let read yaml = 
+    use reader = new StringReader(yaml)
+    let stream = YamlStream()
+    stream.Load(reader)
+    stream.Documents
+
+let init() = { Config = read "" }, Cmd.none
 
 let update msg state =
     match msg with
-    | Increment -> { state with Count = state.Count + 1 }, Cmd.none
-    | Decrement -> { state with Count = state.Count - 1 }, Cmd.none
+    | LoadConfig -> { state with Config = read "" }, Cmd.none
 
 [<ReactComponent>]
 let Counter() =
     let state, dispatch = React.useElmish(init, update, [| |])
     Html.div [  
-        Html.h1 state.Count
         Bulma.button.button [
             Bulma.color.isPrimary
-            prop.text "Increment"
-            prop.onClick (fun _ -> dispatch Increment)
-        ]
-
-        Bulma.button.button [
-            Bulma.color.isDark
-            prop.text "Decrement"
-            prop.onClick (fun _ -> dispatch Decrement)
+            prop.text "LoadConfig"
+            prop.onClick (fun _ -> dispatch LoadConfig)
         ]
     ]
 
