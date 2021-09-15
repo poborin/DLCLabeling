@@ -1,6 +1,7 @@
 source https://api.nuget.org/v3/index.json
 
 nuget Feliz.Bulma
+nuget Feliz.ElmishComponents
 nuget Feliz.UseElmish
 nuget FSharp.Core
 nuget Fable.DateFunctions 3.7.0
