@@ -47,6 +47,14 @@ NUGET
     Feliz.Bulma (2.18)
       Feliz (>= 1.32) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.7.2) - restriction: >= netstandard2.0
+    Feliz.Bulma.Checkradio (2.0)
+      Feliz (>= 1.32) - restriction: >= netstandard2.0
+      Feliz.Bulma (>= 2.8.1) - restriction: >= netstandard2.0
+      FSharp.Core (>= 5.0) - restriction: >= netstandard2.0
+    Feliz.Bulma.Divider (2.0)
+      Feliz (>= 1.32) - restriction: >= netstandard2.0
+      Feliz.Bulma (>= 2.8.1) - restriction: >= netstandard2.0
+      FSharp.Core (>= 5.0) - restriction: >= netstandard2.0
     Feliz.CompilerPlugins (1.6) - restriction: >= netstandard2.0
       Fable.AST (>= 3.0) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.7.2) - restriction: >= netstandard2.0

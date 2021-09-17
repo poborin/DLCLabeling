@@ -28,3 +28,15 @@ type MinimalConfig =
                     Alphavalue = get.Required.Field "alphavalue" Decode.float
                     Colormap = get.Required.Field "colormap" Decode.string
                 })
+
+    static member Stub =
+        { Individuals = [|"individual1"; "individual2"|]
+          Uniquebodyparts = [|"part1"; "part2"|]
+          Multianimalbodyparts = [|"arm"; "leg"|]
+          Skeleton = [|[|"arm"; "leg"|]|]
+          Bodyparts = "MULTI!"
+          SkeletonColor = "black"
+          Dotsize = 12
+          Alphavalue = 0.7
+          Colormap = "rainbow"
+        }

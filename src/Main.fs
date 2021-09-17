@@ -10,7 +10,12 @@ type State = { CurrentConfig: MinimalConfig option }
 type Msg =
     | LoadConfig of MinimalConfig
 
+#if DEBUG
+let init = { CurrentConfig = Some MinimalConfig.Stub }, Cmd.none
+#else
 let init = { CurrentConfig = None }, Cmd.none
+#endif
+
 
 let update msg state =
     match msg with 
