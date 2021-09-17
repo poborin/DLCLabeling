@@ -3,11 +3,12 @@ module Main
 open Feliz
 open Feliz.UseElmish
 open Elmish
+open ConfigDecoder
 
-type State = { CurrentConfig: string option }
+type State = { CurrentConfig: MinimalConfig option }
 
 type Msg =
-    | LoadConfig of string
+    | LoadConfig of MinimalConfig
 
 let init = { CurrentConfig = None }, Cmd.none
 

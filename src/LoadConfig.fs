@@ -9,7 +9,7 @@ open ConfigDecoder
 
 type State = { IsConfigLoaded: bool }
 
-type Props = { LoadConfig: string -> unit }
+type Props = { LoadConfig: MinimalConfig -> unit }
 
 type Msg =
     | LoadConfig of string
@@ -22,11 +22,10 @@ let update props msg state =
     | LoadConfig config ->
         let objConfig = JsYaml.load(config)
         let miniConfig = Decode.fromValue "$" MinimalConfig.Decoder objConfig
-        Console.Write(miniConfig)
-        { state with IsConfigLoaded = true }, 
-        Cmd.ofSub(fun _-> 
-            Console.WriteLine("dispatch from loader")
-            props.LoadConfig(objConfig))
+        match miniConfig with
+        | Ok result -> { state with IsConfigLoaded = true }, Cmd.ofSub(fun _-> props.LoadConfig(result))
+        | Error _ -> { state with IsConfigLoaded = false }, Cmd.ofMsg(LoadConfigError)
+        
     | LoadConfigError -> { state with IsConfigLoaded = false }, Cmd.none
 
 let configLoader = React.functionComponent("LoadConfigForm", fun props -> 
