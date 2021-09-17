@@ -11,8 +11,10 @@
         "test": "dotnet fable tests --outDir dist/tests && mocha dist/tests -r esm"
     },
     "dependencies": {
+        "@types/js-yaml": "^4.0.3",
         "bulma": "^0.9.3",
         "date-fns": "^2.16.1",
+        "js-yaml": "^4.1.0",
         "react": "^17.0.1",
         "react-dom": "^17.0.1"
     },

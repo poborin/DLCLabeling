@@ -4,24 +4,29 @@ open Feliz
 open Feliz.UseElmish
 open Elmish
 open System
+open Thoth.Json
+open ConfigDecoder
 
 type State = { IsConfigLoaded: bool }
 
-type Props = { LoadConfig: obj -> unit }
+type Props = { LoadConfig: string -> unit }
 
 type Msg =
-    | LoadConfig of obj
+    | LoadConfig of string
     | LoadConfigError
 
 let init() = { IsConfigLoaded = false }, Cmd.none
 
 let update props msg state =
     match msg with 
-    | LoadConfig obj -> 
+    | LoadConfig config ->
+        let objConfig = JsYaml.load(config)
+        let miniConfig = Decode.fromValue "$" MinimalConfig.Decoder objConfig
+        Console.Write(miniConfig)
         { state with IsConfigLoaded = true }, 
         Cmd.ofSub(fun _-> 
             Console.WriteLine("dispatch from loader")
-            props.LoadConfig(obj))
+            props.LoadConfig(objConfig))
     | LoadConfigError -> { state with IsConfigLoaded = false }, Cmd.none
 
 let configLoader = React.functionComponent("LoadConfigForm", fun props -> 
@@ -55,7 +60,7 @@ let configLoader = React.functionComponent("LoadConfigForm", fun props ->
 
                                     reader.onerror <- fun evt ->
                                         dispatch LoadConfigError
-                                        
+
                                     reader.readAsText(file)
                                 )
                             ]

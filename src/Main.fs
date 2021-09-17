@@ -4,10 +4,10 @@ open Feliz
 open Feliz.UseElmish
 open Elmish
 
-type State = { CurrentConfig: obj option }
+type State = { CurrentConfig: string option }
 
 type Msg =
-    | LoadConfig of obj
+    | LoadConfig of string
 
 let init = { CurrentConfig = None }, Cmd.none
 

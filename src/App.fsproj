@@ -4,6 +4,8 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ConfigDecoder.fs" />
+    <Compile Include="js-yaml.fs" />
     <Compile Include="LoadConfig.fs" />
     <Compile Include="Labeling.fs" />
     <None Include="index.html" />
