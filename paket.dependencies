@@ -1,8 +1,10 @@
 source https://api.nuget.org/v3/index.json
 
+nuget Fable.FontAwesome
 nuget Feliz.Bulma
 nuget Feliz.Bulma.Checkradio
 nuget Feliz.Bulma.Divider
+nuget Feliz.Bulma.QuickView
 nuget Feliz.ElmishComponents
 nuget Feliz.UseElmish
 nuget FSharp.Core

@@ -29,6 +29,9 @@ NUGET
     Fable.Elmish (3.1) - restriction: >= netstandard2.0
       Fable.Core (>= 3.0) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.6.2) - restriction: >= netstandard2.0
+    Fable.FontAwesome (2.0)
+      Fable.Core (>= 3.0) - restriction: >= netstandard2.0
+      Fable.React (>= 5.1) - restriction: >= netstandard2.0
     Fable.Mocha (2.9.1)
       Fable.Core (>= 3.0) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.7) - restriction: >= netstandard2.0
@@ -52,6 +55,10 @@ NUGET
       Feliz.Bulma (>= 2.8.1) - restriction: >= netstandard2.0
       FSharp.Core (>= 5.0) - restriction: >= netstandard2.0
     Feliz.Bulma.Divider (2.0)
+      Feliz (>= 1.32) - restriction: >= netstandard2.0
+      Feliz.Bulma (>= 2.8.1) - restriction: >= netstandard2.0
+      FSharp.Core (>= 5.0) - restriction: >= netstandard2.0
+    Feliz.Bulma.QuickView (2.0)
       Feliz (>= 1.32) - restriction: >= netstandard2.0
       Feliz.Bulma (>= 2.8.1) - restriction: >= netstandard2.0
       FSharp.Core (>= 5.0) - restriction: >= netstandard2.0
