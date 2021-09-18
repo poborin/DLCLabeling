@@ -35,6 +35,17 @@ let configLoader = React.functionComponent("LoadConfigForm", fun props ->
         prop.className "center-screen"
         prop.children [
             Html.div [
+                // https://safe-stack.github.io/docs/recipes/client-server/upload-file-from-client/
+                // Bulma.file [
+                //     Bulma.fileLabel.label [
+                //         Bulma.fileInput [
+                //             // prop.onChange (handleFileEvent onLoad)
+                //         ]
+                //         Bulma.fileCta [
+                //             Bulma.fileLabel.label "Choose a file..."
+                //         ]
+                //     ]
+                // ]
                 prop.className "file is-normal is-boxed"
                 prop.children [
                     Html.label [

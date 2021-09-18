@@ -45,7 +45,18 @@ let labelingCanvas = React.functionComponent("LoadConfigForm", fun props ->
                             prop.children [
                                 Bulma.navbarLink.a [ prop.text "File" ]
                                 Bulma.navbarDropdown.div [
-                                    Bulma.navbarItem.a [ prop.text "Load images" ]
+                                    Bulma.navbarItem.a [ 
+                                        Bulma.file [
+                                            Bulma.fileLabel.label [
+                                                Bulma.fileCta [
+                                                    Bulma.fileLabel.label "Choose a file..."
+                                                ]
+                                                Bulma.fileInput [
+                                                    // prop.onChange (handleFileEvent onLoad)
+                                                ]
+                                            ]
+                                        ]
+                                    ]
                                     Bulma.navbarDivider []
                                     Bulma.navbarItem.a [ prop.text "Save" ]
                                 ]
@@ -127,22 +138,7 @@ let labelingCanvas = React.functionComponent("LoadConfigForm", fun props ->
                     // Divider.divider [
                     //     prop.text "Images"
                     // ]
-                    // Bulma.label [
-                    //     prop.children [
-                    //         Bulma.fileInput [
-                                
-                    //         ]
-                    //         Html.span [
-                    //             prop.className "file-cta"
-                    //             prop.children [
-                    //                 Html.span [
-                    //                     prop.className "file-label"
-                    //                     prop.text "Load images"
-                    //                 ]
-                    //             ]
-                    //         ]
-                    //     ]
-                    // ]
+
                 ]
             ]
         ]
