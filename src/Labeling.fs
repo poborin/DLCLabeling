@@ -44,6 +44,9 @@ let labelingCanvas = React.functionComponent("LoadConfigForm", fun props ->
         Bulma.column [
             Bulma.column.is2
             prop.children [
+                Divider.divider [
+                    prop.text "Labeling"
+                ]
                 Html.p [
                     Html.strong "Individuals"
                 ]
@@ -54,7 +57,6 @@ let labelingCanvas = React.functionComponent("LoadConfigForm", fun props ->
                         ]
                     ]
                 ]
-  
                 Html.p [
                     Html.strong "Body parts"
                 ]
@@ -71,7 +73,6 @@ let labelingCanvas = React.functionComponent("LoadConfigForm", fun props ->
                     prop.text "Images"
                 ]
                 Bulma.label [
-                    
                     prop.children [
                         Bulma.fileInput [
                             
