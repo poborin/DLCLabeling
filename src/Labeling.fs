@@ -26,7 +26,7 @@ let update props msg state =
     | DisaplayConfigFailed -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
  
-let labelingCanvas = React.functionComponent("LoadConfigForm", fun props -> 
+let labelingCanvas = React.functionComponent("LabelingCanvas", fun props -> 
     let state, dispatch = React.useElmish(init props, update props, [| |])
     Html.div [
         Bulma.navbar [
@@ -46,15 +46,11 @@ let labelingCanvas = React.functionComponent("LoadConfigForm", fun props ->
                                 Bulma.navbarLink.a [ prop.text "File" ]
                                 Bulma.navbarDropdown.div [
                                     Bulma.navbarItem.a [ 
-                                        Bulma.file [
-                                            Bulma.fileLabel.label [
-                                                Bulma.fileCta [
-                                                    Bulma.fileLabel.label "Choose a file..."
-                                                ]
-                                                Bulma.fileInput [
-                                                    // prop.onChange (handleFileEvent onLoad)
-                                                ]
-                                            ]
+                                        Html.p  "Load image folder" 
+                                        Html.input [
+                                            prop.custom ("webkitdirectory", "true")
+                                            prop.type'.file
+                                            prop.className "file-input"
                                         ]
                                     ]
                                     Bulma.navbarDivider []
