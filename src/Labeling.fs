@@ -5,11 +5,16 @@ open Feliz.UseElmish
 open Feliz.Bulma
 open Elmish
 open ConfigDecoder
-open System
+open Fable.Core.JsInterop
+open System.Collections.Generic
 
 type State = { 
     Config: MinimalConfig 
-    ShowQuickView: bool }
+    ShowQuickView: bool
+    LoadedImages: string list
+    // LoadedCSVUrl: string option
+    // LoadedH5Url: string option
+    ErrorMessage: string option }
 
 type Props = { Config: MinimalConfig }
 
@@ -17,17 +22,46 @@ type Msg =
     | DisaplayConfig of MinimalConfig
     | DisaplayConfigFailed
     | ToggleQuickView
+    | FileLoaded of {| FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string |}
 
-let init props = { Config = props.Config; ShowQuickView = false }, Cmd.none
+let init props = { 
+    Config = props.Config; 
+    ShowQuickView = false; 
+    LoadedImages = []; 
+    ErrorMessage = None }, Cmd.none
 
 let update props msg state =
     match msg with 
     | DisaplayConfig config -> state, Cmd.none
     | DisaplayConfigFailed -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
- 
+    | FileLoaded file -> { state with LoadedImages = state.LoadedImages |> List.append [file.DisplayUrl] }, Cmd.none
+
+let loadImage (fileName: string, blob: Browser.Types.Blob) =
+    printf "%s: %i" fileName blob.size
+    let fs = Browser.Dom.FileReader.Create()
+
+    fs.onload <- (fun e -> printf "reader returned"
+                           let res = e.target?result
+                           let storageItem = sprintf "imp_%s" fileName
+                           Browser.WebStorage.localStorage.setItem(storageItem, res)
+                           let disaplayUrl = Browser.WebStorage.localStorage.getItem(storageItem)
+                           let msg = FileLoaded {| FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl |}
+                           Cmd.ofMsg(msg) |> ignore)
+                       
+    fs.readAsDataURL(blob)
+
+let loadImages (fileEvent: Browser.Types.Event) =
+    let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
+
+    let fileList: Browser.Types.FileList = !!fileEvent.target?files
+    [|0 .. fileList.length - 1|] 
+    |> Array.map (fileList.item >> fileNameBlob)
+    |> Array.iter loadImage
+
 let labelingCanvas = React.functionComponent("LabelingCanvas", fun props -> 
     let state, dispatch = React.useElmish(init props, update props, [| |])
+
     Html.div [
         Bulma.navbar [
             Bulma.color.isPrimary
@@ -51,6 +85,7 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
                                             prop.custom ("webkitdirectory", "true")
                                             prop.type'.file
                                             prop.className "file-input"
+                                            prop.onChange loadImages
                                         ]
                                     ]
                                     Bulma.navbarDivider []
@@ -131,10 +166,6 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
                             ])
                         |> prop.children
                     ]
-                    // Divider.divider [
-                    //     prop.text "Images"
-                    // ]
-
                 ]
             ]
         ]
