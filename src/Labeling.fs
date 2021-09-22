@@ -8,12 +8,15 @@ open ConfigDecoder
 open Fable.Core.JsInterop
 open System.Collections.Generic
 
+type ImageFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
+
 type State = { 
     Config: MinimalConfig 
     ShowQuickView: bool
-    LoadedImages: string list
+    LoadedImages: ImageFile list
     // LoadedCSVUrl: string option
     // LoadedH5Url: string option
+    SelectedImage: ImageFile option
     ErrorMessage: string option }
 
 type Props = { Config: MinimalConfig }
@@ -22,46 +25,78 @@ type Msg =
     | DisaplayConfig of MinimalConfig
     | DisaplayConfigFailed
     | ToggleQuickView
-    | FileLoaded of {| FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string |}
+    | FileLoaded of ImageFile
+    | SelectImage of ImageFile
 
 let init props = { 
     Config = props.Config; 
     ShowQuickView = false; 
-    LoadedImages = []; 
+    LoadedImages = [];
+    SelectedImage = None;
     ErrorMessage = None }, Cmd.none
 
+let selectLoadedFile state file =
+    match state.SelectedImage with
+    | Some file -> Cmd.none
+    | None -> Cmd.ofMsg(SelectImage file)
+ 
 let update props msg state =
     match msg with 
     | DisaplayConfig config -> state, Cmd.none
     | DisaplayConfigFailed -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
-    | FileLoaded file -> { state with LoadedImages = state.LoadedImages |> List.append [file.DisplayUrl] }, Cmd.none
+    | FileLoaded file -> 
+        printf "file loaded: %A" file
+        { state with LoadedImages = state.LoadedImages |> List.append [file] }, selectLoadedFile state file
+    | SelectImage file -> 
+        printf "file selected: %A" file
+        { state with SelectedImage = Some file }, Cmd.none
 
-let loadImage (fileName: string, blob: Browser.Types.Blob) =
+let loadImage onLoad (fileName: string, blob: Browser.Types.Blob) =
     printf "%s: %i" fileName blob.size
-    let fs = Browser.Dom.FileReader.Create()
+    let reader = Browser.Dom.FileReader.Create()
 
-    fs.onload <- (fun e -> printf "reader returned"
-                           let res = e.target?result
-                           let storageItem = sprintf "imp_%s" fileName
-                           Browser.WebStorage.localStorage.setItem(storageItem, res)
-                           let disaplayUrl = Browser.WebStorage.localStorage.getItem(storageItem)
-                           let msg = FileLoaded {| FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl |}
-                           Cmd.ofMsg(msg) |> ignore)
+    reader.onload <- (fun ev -> 
+        let disaplayUrl = ev.target?result //|> unbox |> System.Convert.ToBase64String
+        let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
+        onLoad file)
                        
-    fs.readAsDataURL(blob)
+    reader.readAsDataURL(blob)
 
-let loadImages (fileEvent: Browser.Types.Event) =
+let loadImages onLoad (fileEvent: Browser.Types.Event) =
     let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
 
     let fileList: Browser.Types.FileList = !!fileEvent.target?files
     [|0 .. fileList.length - 1|] 
     |> Array.map (fileList.item >> fileNameBlob)
-    |> Array.iter loadImage
+    |> Array.iter (loadImage onLoad)
+
+let getFileDisplayUrl file =
+    printf "selected file %A" file
+    match file with
+    | Some x -> x.DisplayUrl
+    | None -> "https://bulma.io/images/placeholders/1280x960.png"
+
+let getFileName file = 
+    match file with
+    | Some x -> x.FileName
+    | None -> "placeholder"
+
+let miniViews state =
+    state.LoadedImages |> List.toSeq |> Seq.map (fun x ->
+        Bulma.image [            
+            Bulma.image.isFullWidth
+            prop.children [
+                Html.image [
+                    prop.src x.DisplayUrl
+                ]
+            ]
+        ]
+    )
 
 let labelingCanvas = React.functionComponent("LabelingCanvas", fun props -> 
     let state, dispatch = React.useElmish(init props, update props, [| |])
-
+    printf "state %A" state
     Html.div [
         Bulma.navbar [
             Bulma.color.isPrimary
@@ -85,7 +120,10 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
                                             prop.custom ("webkitdirectory", "true")
                                             prop.type'.file
                                             prop.className "file-input"
-                                            prop.onChange loadImages
+                                            prop.onChange (fun ev -> 
+                                                let onLoad = (FileLoaded >> dispatch)
+                                                loadImages onLoad ev
+                                            )
                                         ]
                                     ]
                                     Bulma.navbarDivider []
@@ -130,14 +168,26 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
             Bulma.column [
                 prop.children [
                     Bulma.section [
+                        Bulma.hero [
+                            prop.text (getFileName state.SelectedImage)
+                        ]
                         Bulma.image [
                             Bulma.image.isFullWidth
                             prop.children [
                                 Html.image [
-                                    prop.src "https://bulma.io/images/placeholders/1280x960.png"
+                                    prop.src (getFileDisplayUrl state.SelectedImage)
                                 ]
                             ]
                         ]
+                    ]
+                    Html.div [
+                        // prop.style [
+                        //     style.overflowX.scroll
+                        //     style.width.fitContent
+                        // ]
+                        // prop.children [
+                        //     yield! miniViews state
+                        // ]
                     ]
                 ]
             ]
