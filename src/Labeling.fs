@@ -46,14 +46,11 @@ let update props msg state =
     | DisaplayConfigFailed -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
     | FileLoaded file -> 
-        printf "file loaded: %A" file
         { state with LoadedImages = state.LoadedImages |> List.append [file] }, selectLoadedFile state file
     | SelectImage file -> 
-        printf "file selected: %A" file
         { state with SelectedImage = Some file }, Cmd.none
 
 let loadImage onLoad (fileName: string, blob: Browser.Types.Blob) =
-    printf "%s: %i" fileName blob.size
     let reader = Browser.Dom.FileReader.Create()
 
     reader.onload <- (fun ev -> 
@@ -72,7 +69,6 @@ let loadImages onLoad (fileEvent: Browser.Types.Event) =
     |> Array.iter (loadImage onLoad)
 
 let getFileDisplayUrl file =
-    printf "selected file %A" file
     match file with
     | Some x -> x.DisplayUrl
     | None -> "https://bulma.io/images/placeholders/1280x960.png"
@@ -84,11 +80,15 @@ let getFileName file =
 
 let miniViews state =
     state.LoadedImages |> List.toSeq |> Seq.map (fun x ->
-        Bulma.image [            
-            Bulma.image.isFullWidth
+        Bulma.column [
+            Bulma.column.is2
             prop.children [
-                Html.image [
-                    prop.src x.DisplayUrl
+                Bulma.image [           
+                    prop.children [
+                        Html.img [
+                            prop.src x.DisplayUrl
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -96,7 +96,6 @@ let miniViews state =
 
 let labelingCanvas = React.functionComponent("LabelingCanvas", fun props -> 
     let state, dispatch = React.useElmish(init props, update props, [| |])
-    printf "state %A" state
     Html.div [
         Bulma.navbar [
             Bulma.color.isPrimary
@@ -167,27 +166,31 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
         Bulma.columns [
             Bulma.column [
                 prop.children [
-                    Bulma.section [
-                        Bulma.hero [
-                            prop.text (getFileName state.SelectedImage)
-                        ]
-                        Bulma.image [
-                            Bulma.image.isFullWidth
-                            prop.children [
-                                Html.image [
-                                    prop.src (getFileDisplayUrl state.SelectedImage)
+                    Bulma.hero [
+                        Bulma.heroBody [
+                            Bulma.title [
+                                prop.text (getFileName state.SelectedImage)
+                            ]
+                            Bulma.image [
+                                Bulma.image.isFullWidth
+                                prop.children [
+                                    Html.img [
+                                        prop.src (getFileDisplayUrl state.SelectedImage)
+                                    ]
+                                ]
+                            ]
+                            Divider.divider [
+                                divider.text "loaded images"
+                            ]
+                            Bulma.columns [
+                                prop.style [
+                                    style.overflowX.scroll
+                                ]
+                                prop.children [
+                                    yield! miniViews state
                                 ]
                             ]
                         ]
-                    ]
-                    Html.div [
-                        // prop.style [
-                        //     style.overflowX.scroll
-                        //     style.width.fitContent
-                        // ]
-                        // prop.children [
-                        //     yield! miniViews state
-                        // ]
                     ]
                 ]
             ]
