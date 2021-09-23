@@ -6,7 +6,7 @@ open Feliz.Bulma
 open Elmish
 open ConfigDecoder
 open Fable.Core.JsInterop
-open System.Collections.Generic
+open System
 
 type ImageFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
@@ -46,7 +46,7 @@ let update props msg state =
     | DisaplayConfigFailed -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
     | FileLoaded file -> 
-        { state with LoadedImages = state.LoadedImages |> List.append [file] }, selectLoadedFile state file
+        { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
 
@@ -65,6 +65,7 @@ let loadImages onLoad (fileEvent: Browser.Types.Event) =
 
     let fileList: Browser.Types.FileList = !!fileEvent.target?files
     [|0 .. fileList.length - 1|] 
+    |> Array.rev
     |> Array.map (fileList.item >> fileNameBlob)
     |> Array.iter (loadImage onLoad)
 
@@ -78,7 +79,7 @@ let getFileName file =
     | Some x -> x.FileName
     | None -> "placeholder"
 
-let miniViews state =
+let miniViews state dispathc =
     state.LoadedImages |> List.toSeq |> Seq.map (fun x ->
         Bulma.column [
             Bulma.column.is2
@@ -87,6 +88,9 @@ let miniViews state =
                     prop.children [
                         Html.img [
                             prop.src x.DisplayUrl
+                            prop.onClick (fun _ -> 
+                                Console.Write(x.FileName)
+                                x |> SelectImage |> dispathc)
                         ]
                     ]
                 ]
@@ -187,7 +191,7 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
                                     style.overflowX.scroll
                                 ]
                                 prop.children [
-                                    yield! miniViews state
+                                    yield! (miniViews state dispatch)
                                 ]
                             ]
                         ]
