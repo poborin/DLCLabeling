@@ -79,12 +79,22 @@ let getFileName file =
     | Some x -> x.FileName
     | None -> "placeholder"
 
+let selectedBorder state file =
+    match Option.contains file state.SelectedImage with
+    | true ->
+        prop.style [
+            style.border(3, borderStyle.solid, "hsl(171, 100%, 41%)")
+            style.borderRadius 2
+        ]
+    | false -> prop.style [style.border(3, borderStyle.dashed, color.white)]
+
 let miniViews state dispathc =
     state.LoadedImages |> List.toSeq |> Seq.map (fun x ->
         Bulma.column [
             Bulma.column.is2
             prop.children [
-                Bulma.image [           
+                Bulma.image [
+                    selectedBorder state x
                     prop.children [
                         Html.img [
                             prop.src x.DisplayUrl
