@@ -1,4 +1,3 @@
-// ts2fable 0.8.0
 module rec JsYaml
 
 #nowarn "3390" // disable warnings for invalid XML comments

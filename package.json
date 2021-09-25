@@ -19,6 +19,7 @@
         "bulma-quickview": "^2.0.0",
         "date-fns": "^2.16.1",
         "js-yaml": "^4.1.0",
+        "panzoom": "^9.4.2",
         "react": "^17.0.1",
         "react-dom": "^17.0.1"
     },

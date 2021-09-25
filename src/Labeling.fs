@@ -7,6 +7,9 @@ open Elmish
 open ConfigDecoder
 open Fable.Core.JsInterop
 open System
+open panzoom
+open panzoom.PanZoom
+
 
 type ImageFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
@@ -22,8 +25,7 @@ type State = {
 type Props = { Config: MinimalConfig }
 
 type Msg = 
-    | DisaplayConfig of MinimalConfig
-    | DisaplayConfigFailed
+    | AddPanZoom
     | ToggleQuickView
     | FileLoaded of ImageFile
     | SelectImage of ImageFile
@@ -39,11 +41,17 @@ let selectLoadedFile state file =
     match state.SelectedImage with
     | Some file -> Cmd.none
     | None -> Cmd.ofMsg(SelectImage file)
- 
+
+let addPanZoom elementId = 
+    Console.Write("test")
+    let element = Browser.Dom.document.getElementById(elementId)
+    printfn "add panzoom to %O" element
+    let options: PanZoomOptions = !!{| bounds = Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
+    panzoom.createPanZoom(element, options)
+    
 let update props msg state =
     match msg with 
-    | DisaplayConfig config -> state, Cmd.none
-    | DisaplayConfigFailed -> state, Cmd.none
+    | AddPanZoom -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
     | FileLoaded file -> 
         { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
@@ -54,13 +62,14 @@ let loadImage onLoad (fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
 
     reader.onload <- (fun ev -> 
-        let disaplayUrl = ev.target?result //|> unbox |> System.Convert.ToBase64String
+        let disaplayUrl = ev.target?result
         let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
         onLoad file)
                        
     reader.readAsDataURL(blob)
 
 let loadImages onLoad (fileEvent: Browser.Types.Event) =
+    addPanZoom "canvas"
     let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
 
     let fileList: Browser.Types.FileList = !!fileEvent.target?files
