@@ -86,7 +86,7 @@ let selectedBorder state file =
             style.border(3, borderStyle.solid, "hsl(171, 100%, 41%)")
             style.borderRadius 2
         ]
-    | false -> prop.style [style.border(3, borderStyle.dashed, color.white)]
+    | false -> prop.style [style.border(3, borderStyle.solid, color.transparent)]
 
 let miniViews state dispathc =
     state.LoadedImages |> List.toSeq |> Seq.map (fun x ->
@@ -108,7 +108,9 @@ let miniViews state dispathc =
         ]
     )
 
-let labelingCanvas = React.functionComponent("LabelingCanvas", fun props -> 
+
+[<ReactComponent>]
+let labelingCanvas props =
     let state, dispatch = React.useElmish(init props, update props, [| |])
     Html.div [
         Bulma.navbar [
@@ -178,6 +180,7 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
         ]
 
         Bulma.columns [
+
             Bulma.column [
                 prop.children [
                     Bulma.hero [
@@ -186,9 +189,10 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
                                 prop.text (getFileName state.SelectedImage)
                             ]
                             Bulma.image [
-                                Bulma.image.isFullWidth
+                                // Bulma.image.isFullWidth
                                 prop.children [
                                     Html.img [
+                                        prop.id "canvas"
                                         prop.src (getFileDisplayUrl state.SelectedImage)
                                     ]
                                 ]
@@ -208,6 +212,7 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
                     ]
                 ]
             ]
+            
             Bulma.column [
                 Bulma.column.is2
                 prop.children [
@@ -237,4 +242,3 @@ let labelingCanvas = React.functionComponent("LabelingCanvas", fun props ->
             ]
         ]
     ]
-)

@@ -28,7 +28,8 @@ let update props msg state =
         
     | LoadConfigError -> { state with IsConfigLoaded = false }, Cmd.none
 
-let configLoader = React.functionComponent("LoadConfigForm", fun props -> 
+[<ReactComponent>]
+let configLoader props = 
     let state, dispatch = React.useElmish(init, update props, [| |])
 
     Html.div [  
@@ -89,4 +90,3 @@ let configLoader = React.functionComponent("LoadConfigForm", fun props ->
             ]
         ]
     ]
-)
