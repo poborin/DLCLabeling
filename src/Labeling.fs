@@ -56,25 +56,40 @@ let update props msg state =
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
 
-let loadImage onLoad (fileName: string, blob: Browser.Types.Blob) =
+let loadImage dispatch (fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
 
     reader.onload <- (fun ev -> 
         let disaplayUrl = ev.target?result
         let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
-        onLoad file)
+        dispatch (FileLoaded file))
                        
     reader.readAsDataURL(blob)
 
-let loadImages onLoad (fileEvent: Browser.Types.Event) =
+let loadImages dispatch (fileEvent: Browser.Types.Event) =
     addPanZoom "canvas"
+    
+    let (|HasExtension|_|) expected (uri : string) = 
+        let result = uri.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
+        match result with
+        | true -> Some true
+        | _ -> None
+
+    let isProjectFile (file: Browser.Types.File) =
+        match file.name with
+        | HasExtension ".png" _ -> true
+        | HasExtension ".csv" _ -> true
+        | HasExtension ".h5" _ -> true
+        | _ -> false
+
     let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
 
     let fileList: Browser.Types.FileList = !!fileEvent.target?files
     [|0 .. fileList.length - 1|] 
     |> Array.rev
+    |> Array.filter (fileList.item >> isProjectFile)
     |> Array.map (fileList.item >> fileNameBlob)
-    |> Array.iter (loadImage onLoad)
+    |> Array.iter (loadImage dispatch)
 
 let getFileDisplayUrl file =
     match file with
@@ -143,8 +158,7 @@ let labelingCanvas props =
                                             prop.type'.file
                                             prop.className "file-input"
                                             prop.onChange (fun ev -> 
-                                                let onLoad = (FileLoaded >> dispatch)
-                                                loadImages onLoad ev
+                                                loadImages dispatch ev
                                             )
                                         ]
                                     ]
