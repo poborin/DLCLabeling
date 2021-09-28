@@ -11,15 +11,15 @@ open panzoom
 open panzoom.PanZoom
 
 
-type ImageFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
+type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
 type State = { 
     Config: MinimalConfig 
     ShowQuickView: bool
-    LoadedImages: ImageFile list
+    LoadedImages: ProjectFile list
     // LoadedCSVUrl: string option
     // LoadedH5Url: string option
-    SelectedImage: ImageFile option
+    SelectedImage: ProjectFile option
     ErrorMessage: string option }
 
 type Props = { Config: MinimalConfig }
@@ -27,8 +27,8 @@ type Props = { Config: MinimalConfig }
 type Msg = 
     | AddPanZoom
     | ToggleQuickView
-    | FileLoaded of ImageFile
-    | SelectImage of ImageFile
+    | ImageLoaded of ProjectFile
+    | SelectImage of ProjectFile
 
 let init props = { 
     Config = props.Config; 
@@ -51,30 +51,33 @@ let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
-    | FileLoaded file -> 
+    | ImageLoaded file -> 
         { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
 
-let loadImage dispatch (fileName: string, blob: Browser.Types.Blob) =
+let (|HasExtension|_|) expected (name: string) = 
+    let result = name.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
+    match result with
+    | true -> Some true
+    | _ -> None
+
+let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
 
     reader.onload <- (fun ev -> 
         let disaplayUrl = ev.target?result
         let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
-        dispatch (FileLoaded file))
+        match file.FileName with
+        | HasExtension ".png" _ -> dispatch (ImageLoaded file)
+        | _ -> ()
+    )
                        
     reader.readAsDataURL(blob)
 
-let loadImages dispatch (fileEvent: Browser.Types.Event) =
+let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
     addPanZoom "canvas"
     
-    let (|HasExtension|_|) expected (uri : string) = 
-        let result = uri.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
-        match result with
-        | true -> Some true
-        | _ -> None
-
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
         | HasExtension ".png" _ -> true
@@ -89,7 +92,7 @@ let loadImages dispatch (fileEvent: Browser.Types.Event) =
     |> Array.rev
     |> Array.filter (fileList.item >> isProjectFile)
     |> Array.map (fileList.item >> fileNameBlob)
-    |> Array.iter (loadImage dispatch)
+    |> Array.iter (loadFile dispatch)
 
 let getFileDisplayUrl file =
     match file with
@@ -158,7 +161,7 @@ let labelingCanvas props =
                                             prop.type'.file
                                             prop.className "file-input"
                                             prop.onChange (fun ev -> 
-                                                loadImages dispatch ev
+                                                loadProjectFiles dispatch ev
                                             )
                                         ]
                                     ]
