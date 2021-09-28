@@ -43,9 +43,7 @@ let selectLoadedFile state file =
     | None -> Cmd.ofMsg(SelectImage file)
 
 let addPanZoom elementId = 
-    Console.Write("test")
     let element = Browser.Dom.document.getElementById(elementId)
-    printfn "add panzoom to %O" element
     let options: PanZoomOptions = !!{| bounds = Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
     panzoom.createPanZoom(element, options)
     
@@ -199,6 +197,10 @@ let labelingCanvas props =
                             ]
                             Bulma.image [
                                 // Bulma.image.isFullWidth
+                                prop.style [
+                                    style.overflow.hidden
+                                    style.userSelect.none
+                                ]
                                 prop.children [
                                     Html.img [
                                         prop.id "canvas"
