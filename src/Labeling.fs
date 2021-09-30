@@ -10,7 +10,6 @@ open System
 open panzoom
 open panzoom.PanZoom
 
-
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
 type State = { 
@@ -28,6 +27,7 @@ type Msg =
     | AddPanZoom
     | ToggleQuickView
     | ImageLoaded of ProjectFile
+    | CSVLoaded of ProjectFile
     | SelectImage of ProjectFile
 
 let init props = { 
@@ -53,6 +53,8 @@ let update props msg state =
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
     | ImageLoaded file -> 
         { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
+    | CSVLoaded file ->
+        state, Cmd.none 
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
 
@@ -66,10 +68,11 @@ let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
 
     reader.onload <- (fun ev -> 
-        let disaplayUrl = ev.target?result
-        let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
-        match file.FileName with
-        | HasExtension ".png" _ -> dispatch (ImageLoaded file)
+        match fileName with
+        | HasExtension ".png" _ -> 
+            let disaplayUrl = ev.target?result
+            let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
+            dispatch (ImageLoaded file)
         | _ -> ()
     )
                        
