@@ -9,6 +9,7 @@ open Fable.Core.JsInterop
 open System
 open panzoom
 open panzoom.PanZoom
+open Data
 
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
@@ -27,8 +28,10 @@ type Msg =
     | AddPanZoom
     | ToggleQuickView
     | ImageLoaded of ProjectFile
-    | CSVLoaded of ProjectFile
+    | CSVLoaded of string
     | SelectImage of ProjectFile
+    | DisplayLabels of LabeledData list
+    | LogError of exn
 
 let init props = { 
     Config = props.Config; 
@@ -46,6 +49,12 @@ let addPanZoom elementId =
     let element = Browser.Dom.document.getElementById(elementId)
     let options: PanZoomOptions = !!{| bounds = Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
     panzoom.createPanZoom(element, options)
+
+let (|EndsWith|_|) expected (name: string) = 
+    let result = name.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
+    match result with
+    | true -> Some true
+    | _ -> None
     
 let update props msg state =
     match msg with 
@@ -53,39 +62,43 @@ let update props msg state =
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
     | ImageLoaded file -> 
         { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
-    | CSVLoaded file ->
-        state, Cmd.none 
+    | CSVLoaded content ->
+        state, Cmd.OfAsync.either LabeledData.AsyncDecode content DisplayLabels LogError
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
-
-let (|HasExtension|_|) expected (name: string) = 
-    let result = name.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
-    match result with
-    | true -> Some true
-    | _ -> None
+    | DisplayLabels labels ->
+        state, Cmd.none
+    | LogError e ->
+        printfn "Error: %s" e.Message
+        state, Cmd.none
 
 let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
 
-    reader.onload <- (fun ev -> 
-        match fileName with
-        | HasExtension ".png" _ -> 
+    match fileName with
+    | EndsWith ".png" _ ->
+        reader.onload <- (fun ev ->
             let disaplayUrl = ev.target?result
             let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
             dispatch (ImageLoaded file)
-        | _ -> ()
-    )
-                       
-    reader.readAsDataURL(blob)
+        )
+        reader.readAsDataURL(blob)
+    | EndsWith ".csv" _ ->
+        reader.onload <- (fun ev -> 
+            let text = ev.target?result
+            dispatch (CSVLoaded text)
+        )
+        reader.readAsText(blob)
+    | _ -> ()
 
 let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
     addPanZoom "canvas"
     
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
-        | HasExtension ".png" _ -> true
-        | HasExtension ".csv" _ -> true
-        | HasExtension ".h5" _ -> true
+        | EndsWith ".png" _ -> true
+        | EndsWith ".csv" _ -> true
+        | EndsWith ".h5" _ -> true
         | _ -> false
 
     let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
