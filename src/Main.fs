@@ -27,9 +27,9 @@ let DLCLabeling() =
     let state, dispatch = React.useElmish(init, update, [| |])
     match state.CurrentConfig with
     | Some config -> 
-        Labeling.labelingCanvas { Config = config } 
+        Labeling.LabelingCanvas {| Config = config |}
     | None -> 
-        LoadConfig.configLoader { LoadConfig = fun config -> config |> LoadConfig |> dispatch} 
+        LoadConfig.ConfigLoader {| LoadConfig = fun config -> config |> LoadConfig |> dispatch |} 
 
 open Browser.Dom
 

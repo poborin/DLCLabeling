@@ -22,7 +22,7 @@ type State = {
     SelectedImage: ProjectFile option
     ErrorMessage: string option }
 
-type Props = { Config: MinimalConfig }
+type Props = {| Config: MinimalConfig |}
 
 type Msg = 
     | AddPanZoom
@@ -33,12 +33,12 @@ type Msg =
     | DisplayLabels of LabeledData list
     | LogError of exn
 
-let init props = { 
-    Config = props.Config; 
-    ShowQuickView = false; 
-    LoadedImages = [];
-    SelectedImage = None;
-    ErrorMessage = None }, Cmd.none
+let init (props: Props) = { 
+        Config = props.Config; 
+        ShowQuickView = false; 
+        LoadedImages = [];
+        SelectedImage = None;
+        ErrorMessage = None }, Cmd.none
 
 let selectLoadedFile state file =
     match state.SelectedImage with
@@ -47,8 +47,8 @@ let selectLoadedFile state file =
 
 let addPanZoom elementId = 
     let element = Browser.Dom.document.getElementById(elementId)
-    let options: PanZoomOptions = !!{| bounds = Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
-    panzoom.createPanZoom(element, options)
+    // let options: PanZoomOptions = !!{| bounds = (Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
+    panzoom.createPanZoom(element)
 
 let (|EndsWith|_|) expected (name: string) = 
     let result = name.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
@@ -67,6 +67,7 @@ let update props msg state =
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
     | DisplayLabels labels ->
+        printfn "Labels: %A" labels
         state, Cmd.none
     | LogError e ->
         printfn "Error: %s" e.Message
@@ -151,7 +152,7 @@ let miniViews state dispathc =
 
 
 [<ReactComponent>]
-let labelingCanvas props =
+let LabelingCanvas props =
     let state, dispatch = React.useElmish(init props, update props, [| |])
     Html.div [
         Bulma.navbar [
@@ -237,6 +238,8 @@ let labelingCanvas props =
                                 prop.children [
                                     Html.img [
                                         prop.id "canvas"
+                                        // prop.custom ("max-width", "100%")
+                                        // prop.custom ("height", "auto")
                                         prop.src (getFileDisplayUrl state.SelectedImage)
                                     ]
                                 ]
