@@ -17,7 +17,7 @@ type State = {
     Config: MinimalConfig 
     ShowQuickView: bool
     LoadedImages: ProjectFile list
-    // LoadedCSVUrl: string option
+    Labels: LabeledData list
     // LoadedH5Url: string option
     SelectedImage: ProjectFile option
     ErrorMessage: string option }
@@ -37,6 +37,7 @@ let init (props: Props) = {
         Config = props.Config; 
         ShowQuickView = false; 
         LoadedImages = [];
+        Labels = [];
         SelectedImage = None;
         ErrorMessage = None }, Cmd.none
 
@@ -93,7 +94,7 @@ let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
     | _ -> ()
 
 let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
-    addPanZoom "canvas"
+    addPanZoom "canvasImage"
     
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
@@ -237,7 +238,7 @@ let LabelingCanvas props =
                                 ]
                                 prop.children [
                                     Html.img [
-                                        prop.id "canvas"
+                                        prop.id "canvasImage"
                                         // prop.custom ("max-width", "100%")
                                         // prop.custom ("height", "auto")
                                         prop.src (getFileDisplayUrl state.SelectedImage)
