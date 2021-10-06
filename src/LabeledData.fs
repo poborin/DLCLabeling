@@ -1,31 +1,19 @@
 module Data
-open System
 
-type Label = {
-    Bodypart: string
-    Coordinate: {| X: float; Y: float |} option
-    Individual: string
-    Scorer: string
-}
+open Utils
+open Feliz
 
 type LabeledData = 
     {
         FileName: string
-        Labels: Label list
+        Labels: {| Bodypart: string
+                   Coordinate: {|X: float; Y: float|} option
+                   Individual: string
+                   Scorer: string
+                |} list
     }
 
     static member AsyncDecode (csvFile: string) =
-        let (|Prefix|_|) (p:string) (s:string) =
-            if s.StartsWith(p) then
-                Some(s.Substring(p.Length))
-            else
-                None
-
-        let parseFloat (s: string) =
-            match Double.TryParse(s) with 
-            | true, n -> Some n
-            | _ -> None
-
         let initRecord = {|
             Scorers = Array.empty<string>
             Individuals = Array.empty<string>
@@ -58,8 +46,26 @@ type LabeledData =
                                         let scorer = lines.Scorers.[i * 2 ]
                                         let individual = lines.Individuals.[i * 2 ]
                                         let bodypart = lines.Bodyparts.[i * 2]
-                                        { Coordinate = x; Scorer = scorer; Individual = individual; Bodypart = bodypart }
+                                        {| Coordinate = x; Scorer = scorer; Individual = individual; Bodypart = bodypart |}
                                     )
                     { FileName = values.[0]; Labels = labels }
                 )
         }
+
+type LabeledData with
+    member this.SvgCircles (radius: int) fillColor strokeColor (opacity: float) =
+        this.Labels |> List.choose (fun x ->
+            match x.Coordinate with
+            | Some c ->
+                Svg.circle [
+                    svg.id ($"%s{x.Individual}.%s{x.Bodypart}")
+                    svg.cx c.X
+                    svg.cy c.Y
+                    svg.radius radius
+                    svg.fill fillColor
+                    svg.fillOpacity (opacity * 0.8)
+                    svg.stroke strokeColor
+                    svg.strokeOpacity opacity
+                ] |> Some
+            | None -> None
+        )

@@ -10,6 +10,7 @@ open System
 open panzoom
 open panzoom.PanZoom
 open Data
+open Utils
 
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
@@ -17,7 +18,7 @@ type State = {
     Config: MinimalConfig 
     ShowQuickView: bool
     LoadedImages: ProjectFile list
-    Labels: LabeledData list
+    LabeledData: LabeledData list
     // LoadedH5Url: string option
     SelectedImage: ProjectFile option
     ErrorMessage: string option }
@@ -37,7 +38,7 @@ let init (props: Props) = {
         Config = props.Config; 
         ShowQuickView = false; 
         LoadedImages = [];
-        Labels = [];
+        LabeledData = [];
         SelectedImage = None;
         ErrorMessage = None }, Cmd.none
 
@@ -50,12 +51,6 @@ let addPanZoom elementId =
     let element = Browser.Dom.document.getElementById(elementId)
     // let options: PanZoomOptions = !!{| bounds = (Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
     panzoom.createPanZoom(element)
-
-let (|EndsWith|_|) expected (name: string) = 
-    let result = name.EndsWith (expected, StringComparison.CurrentCultureIgnoreCase)
-    match result with
-    | true -> Some true
-    | _ -> None
     
 let update props msg state =
     match msg with 
@@ -151,6 +146,16 @@ let miniViews state dispathc =
         ]
     )
 
+let svgElements (labeleData: LabeledData list) selectedImage =
+    match selectedImage with
+    | Some image ->
+        let labeledData = labeleData |> List.find (fun x -> 
+            match x.FileName  with
+            | EndsWith image.FileName _ -> true
+            | _ -> false)
+
+        labeledData.SvgCircles 10 "#cyan" "#blue" 0.8
+    | None -> List.empty
 
 [<ReactComponent>]
 let LabelingCanvas props =
@@ -237,6 +242,15 @@ let LabelingCanvas props =
                                     style.userSelect.none
                                 ]
                                 prop.children [
+                                    Svg.svg [
+                                        svg.children [
+                                            Svg.g [
+                                                svg.children [
+                                                    yield! (state.SelectedImage |> svgElements state.LabeledData)
+                                                ]
+                                            ]
+                                        ]
+                                    ]
                                     Html.img [
                                         prop.id "canvasImage"
                                         // prop.custom ("max-width", "100%")
