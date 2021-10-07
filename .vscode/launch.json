@@ -9,11 +9,16 @@
             "type": "chrome",
             "request": "launch",
             "url": "http://localhost:8080",
-            "webRoot": "${workspaceFolder}",
+            "webRoot": "${workspaceFolder}/src",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///*": "${workspaceFolder}/*",
+            },
             "skipFiles": [
                 "<node_internals>/**",
                 "**/node_modules/**"
-            ]
+            ],
+            "preLaunchTask": "Watch Client",
         }
     ]
 }

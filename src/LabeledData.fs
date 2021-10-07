@@ -35,19 +35,19 @@ type LabeledData =
             return lines.Files |> List.map (fun x -> 
                     let values = x.Split(',')
                     let labels = values.[1 .. values.Length]
-                                    |> Array.toList
-                                    |> List.pairwise
-                                    |> List.map (fun (x, y) -> 
-                                        match (parseFloat x, parseFloat y) with
+                                    |> Array.chunkBySize 2
+                                    |> Array.map (fun pair -> 
+                                        match (parseFloat pair.[0], parseFloat pair.[1]) with
                                         | (Some x, Some y) -> Some {| X = x; Y = y |}
                                         | _ -> None
                                     )
-                                    |> List.mapi (fun i x -> 
+                                    |> Array.mapi (fun i x -> 
                                         let scorer = lines.Scorers.[i * 2 ]
                                         let individual = lines.Individuals.[i * 2 ]
                                         let bodypart = lines.Bodyparts.[i * 2]
                                         {| Coordinate = x; Scorer = scorer; Individual = individual; Bodypart = bodypart |}
                                     )
+                                    |> Array.toList
                     { FileName = values.[0]; Labels = labels }
                 )
         }
@@ -61,11 +61,12 @@ type LabeledData with
                     svg.id ($"%s{x.Individual}.%s{x.Bodypart}")
                     svg.cx c.X
                     svg.cy c.Y
-                    svg.radius radius
+                    svg.r radius
                     svg.fill fillColor
                     svg.fillOpacity (opacity * 0.8)
                     svg.stroke strokeColor
                     svg.strokeOpacity opacity
+                    prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
                 ] |> Some
             | None -> None
         )

@@ -37,8 +37,8 @@ type Msg =
 let init (props: Props) = { 
         Config = props.Config; 
         ShowQuickView = false; 
-        LoadedImages = [];
-        LabeledData = [];
+        LoadedImages = List.empty;
+        LabeledData = List.empty;
         SelectedImage = None;
         ErrorMessage = None }, Cmd.none
 
@@ -63,8 +63,7 @@ let update props msg state =
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
     | DisplayLabels labels ->
-        printfn "Labels: %A" labels
-        state, Cmd.none
+        { state with LabeledData = labels }, Cmd.none
     | LogError e ->
         printfn "Error: %s" e.Message
         state, Cmd.none
@@ -136,9 +135,7 @@ let miniViews state dispathc =
                     prop.children [
                         Html.img [
                             prop.src x.DisplayUrl
-                            prop.onClick (fun _ -> 
-                                Console.Write(x.FileName)
-                                x |> SelectImage |> dispathc)
+                            prop.onClick (fun _ -> x |> SelectImage |> dispathc)
                         ]
                     ]
                 ]
@@ -149,12 +146,14 @@ let miniViews state dispathc =
 let svgElements (labeleData: LabeledData list) selectedImage =
     match selectedImage with
     | Some image ->
-        let labeledData = labeleData |> List.find (fun x -> 
-            match x.FileName  with
-            | EndsWith image.FileName _ -> true
-            | _ -> false)
+        match labeleData with
+        | [] -> List.empty
+        | _ ->  let labeledData = labeleData |> List.find (fun x -> 
+                    match x.FileName  with
+                    | EndsWith image.FileName _ -> true
+                    | _ -> false)
 
-        labeledData.SvgCircles 10 "#cyan" "#blue" 0.8
+                labeledData.SvgCircles 10 "cyan" "blue" 0.8
     | None -> List.empty
 
 [<ReactComponent>]
@@ -243,15 +242,16 @@ let LabelingCanvas props =
                                 ]
                                 prop.children [
                                     Svg.svg [
+                                        svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
+                                        prop.style [ style.position.absolute; style.custom ("max-width", "100%"); style.custom ("height", "100%"); style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            Svg.g [
-                                                svg.children [
-                                                    yield! (state.SelectedImage |> svgElements state.LabeledData)
-                                                ]
-                                            ]
+                                            yield! (state.SelectedImage |> svgElements state.LabeledData)
                                         ]
                                     ]
                                     Html.img [
+                                        prop.style [
+                                            style.position.relative
+                                        ]
                                         prop.id "canvasImage"
                                         // prop.custom ("max-width", "100%")
                                         // prop.custom ("height", "auto")
