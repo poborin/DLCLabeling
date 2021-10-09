@@ -71,7 +71,7 @@ module PanZoom =
         abstract pause: (unit -> unit) with get, set
         abstract resume: (unit -> unit) with get, set
         abstract isPaused: (unit -> bool) with get, set
-        abstract on: (string -> ('T -> unit) -> unit) with get, set
+        abstract on: (string -> (PanZoom -> unit) -> unit) with get, set
         abstract off: (string -> Function -> unit) with get, set
         abstract fire: (string -> unit) with get, set
         abstract getMinZoom: (unit -> float) with get, set

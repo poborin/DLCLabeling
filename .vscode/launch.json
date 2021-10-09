@@ -19,6 +19,23 @@
                 "**/node_modules/**"
             ],
             "preLaunchTask": "Watch Client",
+        },
+        {
+            "name": "Debug firefox",
+            "type": "firefox",
+            "request": "launch",
+            "reAttach": true,
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}/src",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///*": "${workspaceFolder}/*",
+            },
+            "skipFiles": [
+                "<node_internals>/**",
+                "**/node_modules/**"
+            ],
+            "preLaunchTask": "Watch Client",
         }
     ]
 }

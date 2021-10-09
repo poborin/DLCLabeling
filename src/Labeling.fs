@@ -21,6 +21,7 @@ type State = {
     LabeledData: LabeledData list
     // LoadedH5Url: string option
     SelectedImage: ProjectFile option
+    ImageTransformation: {|X: float; Y: float; Scale: float|}
     ErrorMessage: string option }
 
 type Props = {| Config: MinimalConfig |}
@@ -32,6 +33,7 @@ type Msg =
     | CSVLoaded of string
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
+    | OnImageTransform of {|X: float; Y: float; Scale: float|}
     | LogError of exn
 
 let init (props: Props) = { 
@@ -40,6 +42,7 @@ let init (props: Props) = {
         LoadedImages = List.empty;
         LabeledData = List.empty;
         SelectedImage = None;
+        ImageTransformation = {|X = 0.0; Y = 0.0; Scale = 1.0|}
         ErrorMessage = None }, Cmd.none
 
 let selectLoadedFile state file =
@@ -49,9 +52,9 @@ let selectLoadedFile state file =
 
 let addPanZoom elementId = 
     let element = Browser.Dom.document.getElementById(elementId)
-    // let options: PanZoomOptions = !!{| bounds = (Some true; boundsPadding = Some 0.1; boundsDisabledForZoom = Some true|}
-    panzoom.createPanZoom(element)
-    
+    let options: PanZoomOptions = !!{| maxZoom = Some 5; minZoom = Some 1|}
+    panzoom.createPanZoom(element, options)
+
 let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
@@ -64,6 +67,8 @@ let update props msg state =
         { state with SelectedImage = Some file }, Cmd.none
     | DisplayLabels labels ->
         { state with LabeledData = labels }, Cmd.none
+    | OnImageTransform transform ->
+        { state with ImageTransformation = transform}, Cmd.none
     | LogError e ->
         printfn "Error: %s" e.Message
         state, Cmd.none
@@ -88,7 +93,11 @@ let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
     | _ -> ()
 
 let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
-    addPanZoom "canvasImage"
+    let pz = addPanZoom "canvasImage"
+    pz.on "transform" (fun e -> 
+        let t = e.getTransform()
+        dispatch (OnImageTransform {|X = t.x; Y = t.y; Scale = t.scale|} )
+    )
     
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
@@ -242,6 +251,11 @@ let LabelingCanvas props =
                                 ]
                                 prop.children [
                                     Svg.svg [
+                                        prop.custom ("transform-origin", "0px 0px 0px") :?> ISvgAttribute
+                                        svg.transform [
+                                            transform.translate (state.ImageTransformation.X, state.ImageTransformation.Y)
+                                            transform.scale state.ImageTransformation.Scale
+                                        ]
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.custom ("max-width", "100%"); style.custom ("height", "100%"); style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
