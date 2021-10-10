@@ -52,7 +52,7 @@ let selectLoadedFile state file =
 
 let addPanZoom elementId = 
     let element = Browser.Dom.document.getElementById(elementId)
-    let options: PanZoomOptions = !!{| maxZoom = Some 5; minZoom = Some 1|}
+    let options: PanZoomOptions = !!{| maxZoom = Some 5.; minZoom = Some 1.; bounds = Some true; boundsPadding = Some 1.|}
     panzoom.createPanZoom(element, options)
 
 let update props msg state =
@@ -162,7 +162,7 @@ let svgElements (labeleData: LabeledData list) selectedImage =
                     | EndsWith image.FileName _ -> true
                     | _ -> false)
 
-                labeledData.SvgCircles 10 "cyan" "blue" 0.8
+                labeledData.SvgCircles 10 "cyan" "blue" 0.6
     | None -> List.empty
 
 [<ReactComponent>]
@@ -257,7 +257,7 @@ let LabelingCanvas props =
                                             transform.scale state.ImageTransformation.Scale
                                         ]
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
-                                        prop.style [ style.position.absolute; style.custom ("max-width", "100%"); style.custom ("height", "100%"); style.zIndex 100 ] :?> ISvgAttribute
+                                        prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
                                             yield! (state.SelectedImage |> svgElements state.LabeledData)
                                         ]
@@ -295,12 +295,8 @@ let LabelingCanvas props =
                     Html.p [
                         Html.strong "Individuals"
                     ]
-                    Bulma.control.p [
-                        prop.children [
-                            Bulma.select [
-                                state.Config.Individuals |> Array.map (fun x -> Html.option x) |> prop.children
-                            ]
-                        ]
+                    Bulma.select [
+                        state.Config.Individuals |> Array.map (fun x -> Html.option x) |> prop.children
                     ]
                     Html.p [
                         Html.strong "Body parts"

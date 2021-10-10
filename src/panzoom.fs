@@ -33,9 +33,14 @@ module PanZoom =
         abstract getOwner: (unit -> Element) with get, set
         abstract applyTransform: (Transform -> unit) with get, set
 
+    [<Erase>]
+    type BoundsOption =
+        | Boolean of bool
+        | Bounds of Bounds
+
     type [<AllowNullLiteral>] PanZoomOptions =
         abstract filterKey: (unit -> bool) option with get, set
-        abstract bounds: U2<bool, Bounds> option with get, set
+        abstract bounds: BoundsOption option with get, set
         abstract maxZoom: float option with get, set
         abstract minZoom: float option with get, set
         abstract boundsPadding: float option with get, set

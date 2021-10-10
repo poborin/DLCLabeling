@@ -63,9 +63,9 @@ type LabeledData with
                     svg.cy c.Y
                     svg.r radius
                     svg.fill fillColor
-                    svg.fillOpacity (opacity * 0.8)
+                    svg.fillOpacity opacity
                     svg.stroke strokeColor
-                    svg.strokeOpacity opacity
+                    svg.strokeWidth 2
                     prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
                 ] |> Some
             | None -> None
