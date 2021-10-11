@@ -152,7 +152,7 @@ let miniViews state dispathc =
         ]
     )
 
-let svgElements (labeleData: LabeledData list) selectedImage =
+let svgElements config (labeleData: LabeledData list) selectedImage  =
     match selectedImage with
     | Some image ->
         match labeleData with
@@ -162,7 +162,9 @@ let svgElements (labeleData: LabeledData list) selectedImage =
                     | EndsWith image.FileName _ -> true
                     | _ -> false)
 
-                labeledData.SvgCircles 10 "cyan" "blue" 0.6
+                let circles = labeledData.SvgCircles 10 "cyan" "blue" 0.6
+                let lines = labeledData.Skeleton config "grey" 0.9 |> Array.toList
+                List.append lines circles
     | None -> List.empty
 
 [<ReactComponent>]
@@ -259,7 +261,7 @@ let LabelingCanvas props =
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            yield! (state.SelectedImage |> svgElements state.LabeledData)
+                                            yield! (state.SelectedImage |> svgElements state.Config state.LabeledData)
                                         ]
                                     ]
                                     Html.img [

@@ -33,7 +33,31 @@ type MinimalConfig =
         { Individuals = [|"individual1"; "individual2"|]
           Uniquebodyparts = [|"part1"; "part2"|]
           Multianimalbodyparts = [|"arm"; "leg"|]
-          Skeleton = [|[|"arm"; "leg"|]|]
+          Skeleton = [|[|"right_shoulder"; "right_elbow"|];
+                    [|"left_ankle"; "left_toes"|];
+                    [|"right_shoulder"; "shoulder_blades"|];
+                    [|"forehead"; "neck"|];
+                    [|"left_shoulder"; "left_elbow"|];
+                    [|"lower_back"; "left_hip"|];
+                    [|"right_ankle"; "right_toes"|];
+                    [|"neck"; "left_shoulder"|];
+                    [|"shoulder_blades"; "lower_back"|];
+                    [|"right_elbow"; "right_wrist"|];
+                    [|"right_wrist"; "right_base_knuckle"|];
+                    [|"lower_back"; "right_hip"|];
+                    [|"forehead"; "nose"|];
+                    [|"left_elbow"; "left_wrist"|];
+                    [|"nose"; "neck"|];
+                    [|"left_wrist"; "left_base_knuckle"|];
+                    [|"left_hip"; "left_knee"|];
+                    [|"neck"; "shoulder_blades"|];
+                    [|"right_base_knuckle"; "right_first_knuckle"|];
+                    [|"right_hip"; "right_knee"|];
+                    [|"left_knee"; "left_ankle"|];
+                    [|"neck"; "right_shoulder"|];
+                    [|"left_base_knuckle"; "left_first_knuckle"|];
+                    [|"left_shoulder"; "shoulder_blades"|];
+                    [|"right_knee"; "right_ankle"|]|]
           Bodyparts = "MULTI!"
           SkeletonColor = "black"
           Dotsize = 12
