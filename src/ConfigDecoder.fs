@@ -30,7 +30,7 @@ type MinimalConfig =
                 })
 
     static member Stub =
-        { Individuals = [|"individual1"; "individual2"|]
+        { Individuals = [|"individual1"; "individual2"; "individual3"; "individual4"; "individual5"; "individual6"; "individual7"; "individual8"|]
           Uniquebodyparts = [|"part1"; "part2"|]
           Multianimalbodyparts = [|"arm"; "leg"|]
           Skeleton = [|[|"right_shoulder"; "right_elbow"|];
