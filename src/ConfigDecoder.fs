@@ -1,6 +1,8 @@
 module ConfigDecoder
 
+open Fable.Core.JsInterop
 open Thoth.Json
+open ColorMap
 
 type MinimalConfig = 
     { Individuals: array<string>
@@ -29,10 +31,39 @@ type MinimalConfig =
                     Colormap = get.Required.Field "colormap" Decode.string
                 })
 
+    member this.BodyColors =
+      let spec: IColormapSpec = !!{| colormap = this.Colormap; format = Hex; nshades = this.Multianimalbodyparts.Length |}
+      let map = colormap(spec)
+      this.Multianimalbodyparts 
+      |> Array.mapi (fun i x -> (x, map.[i]))
+      |> Map.ofArray
+
     static member Stub =
         { Individuals = [|"individual1"; "individual2"; "individual3"; "individual4"; "individual5"; "individual6"; "individual7"; "individual8"|]
           Uniquebodyparts = [|"part1"; "part2"|]
-          Multianimalbodyparts = [|"arm"; "leg"|]
+          Multianimalbodyparts = [|"forehead";
+                                    "nose";
+                                    "neck";
+                                    "right_shoulder";
+                                    "right_elbow";
+                                    "right_wrist";
+                                    "right_base_knuckle";
+                                    "right_first_knuckle";
+                                    "left_shoulder";
+                                    "left_elbow";
+                                    "left_wrist";
+                                    "left_base_knuckle";
+                                    "left_first_knuckle";
+                                    "shoulder_blades";
+                                    "lower_back";
+                                    "right_hip";
+                                    "right_knee";
+                                    "right_ankle";
+                                    "right_toes";
+                                    "left_hip";
+                                    "left_knee";
+                                    "left_ankle";
+                                    "left_toes"|]
           Skeleton = [|[|"right_shoulder"; "right_elbow"|];
                     [|"left_ankle"; "left_toes"|];
                     [|"right_shoulder"; "shoulder_blades"|];

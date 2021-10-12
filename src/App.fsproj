@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Utils.fs" />
+    <Compile Include="colormap.fs" />
     <Compile Include="js-yaml.fs" />
     <Compile Include="panzoom.fs" />
     <Compile Include="ConfigDecoder.fs" />

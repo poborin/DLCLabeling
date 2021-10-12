@@ -152,7 +152,7 @@ let miniViews state dispathc =
         ]
     )
 
-let svgElements config (labeleData: LabeledData list) selectedImage  =
+let svgElements (config: MinimalConfig) (labeleData: LabeledData list) selectedImage  =
     match selectedImage with
     | Some image ->
         match labeleData with
@@ -162,7 +162,7 @@ let svgElements config (labeleData: LabeledData list) selectedImage  =
                     | EndsWith image.FileName _ -> true
                     | _ -> false)
 
-                let circles = labeledData.SvgCircles 10 "cyan" "blue" 0.6
+                let circles = labeledData.SvgCircles 10 config.BodyColors "blue" 0.6
                 let lines = labeledData.Skeleton config "grey" 0.9 |> Array.toList
                 List.append lines circles
     | None -> List.empty

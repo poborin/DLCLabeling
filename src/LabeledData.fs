@@ -63,7 +63,7 @@ type LabeledData =
                 )
         }
 
-    member this.SvgCircles (radius: int) fillColor strokeColor (opacity: float) =
+    member this.SvgCircles (radius: int) (fillColors: Map<string, string>) strokeColor (opacity: float) =
         let circles ls =
             ls |> List.choose (fun x ->
             match x.Coordinate with
@@ -73,7 +73,7 @@ type LabeledData =
                     svg.cx c.X
                     svg.cy c.Y
                     svg.r radius
-                    svg.fill fillColor
+                    svg.fill fillColors.[x.Bodypart]
                     svg.fillOpacity opacity
                     svg.stroke strokeColor
                     svg.strokeWidth 2
