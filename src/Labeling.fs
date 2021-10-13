@@ -162,7 +162,7 @@ let svgElements (config: MinimalConfig) (labeleData: LabeledData list) selectedI
                     | EndsWith image.FileName _ -> true
                     | _ -> false)
 
-                let circles = labeledData.SvgCircles 10 config.BodyColors "blue" 0.6
+                let circles = labeledData.SvgCircles 10 config.BodyColors config.IndividualColors 0.6
                 let lines = labeledData.Skeleton config "grey" 0.9 |> Array.toList
                 List.append lines circles
     | None -> List.empty

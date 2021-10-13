@@ -36,7 +36,15 @@ type MinimalConfig =
       let map = colormap(spec)
       this.Multianimalbodyparts 
       |> Array.mapi (fun i x -> (x, map.[i]))
-      |> Map.ofArray
+      |> dict
+
+    member this.IndividualColors =
+      let nshades = if this.Individuals.Length > 8 then this.Individuals.Length else 8
+      let spec: IColormapSpec = !!{| colormap = "jet"; format = Hex; nshades = nshades |}
+      let map = colormap(spec)
+      this.Individuals
+      |> Array.mapi (fun i x -> (x, map.[i]))
+      |> dict
 
     static member Stub =
         { Individuals = [|"individual1"; "individual2"; "individual3"; "individual4"; "individual5"; "individual6"; "individual7"; "individual8"|]

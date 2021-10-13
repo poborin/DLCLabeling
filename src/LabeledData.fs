@@ -3,6 +3,7 @@ module Data
 open Utils
 open Feliz
 open ConfigDecoder
+open System.Collections.Generic
 
 type Coordinate =
     { 
@@ -63,7 +64,7 @@ type LabeledData =
                 )
         }
 
-    member this.SvgCircles (radius: int) (fillColors: Map<string, string>) strokeColor (opacity: float) =
+    member this.SvgCircles (radius: int) (fillColors: IDictionary<string, string>) (strokeColor: IDictionary<string, string>) (opacity: float) =
         let circles ls =
             ls |> List.choose (fun x ->
             match x.Coordinate with
@@ -75,8 +76,8 @@ type LabeledData =
                     svg.r radius
                     svg.fill fillColors.[x.Bodypart]
                     svg.fillOpacity opacity
-                    svg.stroke strokeColor
-                    svg.strokeWidth 2
+                    svg.stroke strokeColor.[x.Individual]
+                    svg.strokeWidth 3
                     prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
                     svg.children [
                         Svg.title $"%s{x.Individual}\n%s{x.Bodypart}"
