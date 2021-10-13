@@ -69,7 +69,7 @@ type LabeledData =
             match x.Coordinate with
             | Some c ->
                 Svg.circle [
-                    svg.id ($"%s{x.Individual}.%s{x.Bodypart}")
+                    svg.id $"%s{x.Individual}.%s{x.Bodypart}"
                     svg.cx c.X
                     svg.cy c.Y
                     svg.r radius
@@ -78,6 +78,9 @@ type LabeledData =
                     svg.stroke strokeColor
                     svg.strokeWidth 2
                     prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
+                    svg.children [
+                        Svg.title $"%s{x.Individual}\n%s{x.Bodypart}"
+                    ]
                 ] |> Some
             | None -> None
         )
