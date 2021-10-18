@@ -22,7 +22,8 @@
         "js-yaml": "^4.1.0",
         "panzoom": "^9.4.2",
         "react": "^17.0.1",
-        "react-dom": "^17.0.1"
+        "react-dom": "^17.0.1",
+        "react-draggable": "^4.4.4"
     },
     "devDependencies": {
         "@babel/core": "^7.12.10",

@@ -8,6 +8,7 @@
     <Compile Include="colormap.fs" />
     <Compile Include="js-yaml.fs" />
     <Compile Include="panzoom.fs" />
+    <Compile Include="react-draggable.fs" />
     <Compile Include="ConfigDecoder.fs" />
     <Compile Include="LabeledData.fs" />
     <Compile Include="LoadConfig.fs" />

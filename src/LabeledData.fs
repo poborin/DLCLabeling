@@ -5,6 +5,7 @@ open Feliz
 open ConfigDecoder
 open System.Collections.Generic
 
+
 type Coordinate =
     { 
         X: float;
@@ -18,6 +19,8 @@ type Label =
         Individual: string
         Scorer: string
     }
+
+open Feliz.ReactDraggable
 
 type LabeledData = 
     {
@@ -51,7 +54,7 @@ type LabeledData =
                                     |> Array.map (fun pair -> 
                                         match (parseFloat pair.[0], parseFloat pair.[1]) with
                                         | (Some x, Some y) -> Some { X = x; Y = y }
-                                        | _ -> None
+                                        | _ -> unbox None
                                     )
                                     |> Array.mapi (fun i x -> 
                                         let scorer = lines.Scorers.[i * 2 ]
@@ -69,7 +72,7 @@ type LabeledData =
             ls |> List.choose (fun x ->
             match x.Coordinate with
             | Some c ->
-                Svg.circle [
+                let circle = Svg.circle [
                     svg.id $"%s{x.Individual}.%s{x.Bodypart}"
                     svg.cx c.X
                     svg.cy c.Y
@@ -82,10 +85,18 @@ type LabeledData =
                     svg.children [
                         Svg.title $"%s{x.Individual}\n%s{x.Bodypart}"
                     ]
-                ] |> Some
-            | None -> None
+                ] 
+
+                ReactDraggable.draggable [
+                    // Html.div []
+                    draggable.child circle
+                ]
+                // circle 
+                |> Some
+            | _ -> unbox None
         )
         
+        // circles
         this.Labels 
         |> List.groupBy (fun x -> x.Individual)
         |> List.map (fun (x, ls) -> 
@@ -130,7 +141,7 @@ type LabeledData =
                 |> Array.choose (fun (c1, c2) -> 
                     match (c1, c2) with
                     | Some c1, Some c2 -> svgLine c1 c2 strokeColor opacity |> Some
-                    | _ -> None
+                    | _ -> unbox None
                 )
             )
             |> Array.reduce Array.append
