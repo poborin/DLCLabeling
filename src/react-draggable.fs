@@ -36,8 +36,11 @@ type IDraggableData =
 
 [<AllowNullLiteral>]
 type IDraggableEventHandler =
-    [<Emit "$0($1...)">] 
-    abstract Invoke: e: MouseEvent * data: IDraggableData -> unit
+    abstract event: MouseEvent with get, set
+    abstract data: IDraggableData with get, set
+
+    // [<Emit "$0($1...)">] 
+    // abstract Invoke: e: MouseEvent * data: IDraggableData -> unit
 
 [<Erase>]
 type draggable =
@@ -111,15 +114,18 @@ type draggable =
 
     /// Called when dragging starts. If `false` is returned any handler,
     /// the action will cancel.
-    static member inline onStart (handler: IDraggableEventHandler) =
+    [<Emit("[\"onStart\", $0]")>]
+    static member inline onStart (handler: MouseEvent -> IDraggableData -> unit) =
         Interop.mkDraggableAttr "onStart" handler
 
     /// Called while dragging.
-    static member inline onDrag (handler: IDraggableEventHandler) =
+    [<Emit("[\"onDrag\", $0]")>]
+    static member inline onDrag (handler: MouseEvent -> IDraggableData -> unit) =
         Interop.mkDraggableAttr "onDrag" handler
 
     /// Called when dragging stops.
-    static member inline onStop (handler: IDraggableEventHandler) =
+    [<Emit("[\"onStop\", $0]")>]
+    static member inline onStop (handler: MouseEvent -> IDraggableData -> unit) =
         Interop.mkDraggableAttr "onStop" handler
 
     /// If running in React Strict mode, ReactDOM.findDOMNode() is deprecated.

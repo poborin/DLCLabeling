@@ -21,6 +21,8 @@ type Label =
     }
 
 open Feliz.ReactDraggable
+open Browser.Types
+open Fable.Core
 
 type LabeledData = 
     {
@@ -87,11 +89,16 @@ type LabeledData =
                     ]
                 ] 
 
+                let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
+                let scale = image.clientWidth / image.naturalWidth
+
                 ReactDraggable.draggable [
-                    // Html.div []
                     draggable.child circle
+                    draggable.scale scale
+                    draggable.onDrag (fun e d ->
+                        printfn "%f %f" d.x d.y
+                    )
                 ]
-                // circle 
                 |> Some
             | _ -> unbox None
         )

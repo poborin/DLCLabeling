@@ -247,6 +247,7 @@ let LabelingCanvas props =
                             ]
                             Bulma.image [
                                 // Bulma.image.isFullWidth
+                                prop.id "canvasContainer"
                                 prop.style [
                                     style.overflow.hidden
                                     style.userSelect.none
@@ -269,8 +270,6 @@ let LabelingCanvas props =
                                             style.position.relative
                                         ]
                                         prop.id "canvasImage"
-                                        // prop.custom ("max-width", "100%")
-                                        // prop.custom ("height", "auto")
                                         prop.src (getFileDisplayUrl state.SelectedImage)
                                     ]
                                 ]
