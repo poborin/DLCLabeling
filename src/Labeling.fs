@@ -11,6 +11,9 @@ open panzoom
 open panzoom.PanZoom
 open Data
 open Utils
+open System.Collections.Generic
+open Browser.Types
+open Feliz.ReactDraggable
 
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 
@@ -19,6 +22,7 @@ type State = {
     ShowQuickView: bool
     LoadedImages: ProjectFile list
     LabeledData: LabeledData list
+    GroupedLabels: Map<string,Map<string, Coordinates option>>
     // LoadedH5Url: string option
     SelectedImage: ProjectFile option
     ImageTransformation: {|X: float; Y: float; Scale: float|}
@@ -33,6 +37,7 @@ type Msg =
     | CSVLoaded of string
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
+    | GroupLabels of LabeledData list * ProjectFile option
     | OnImageTransform of {|X: float; Y: float; Scale: float|}
     | LogError of exn
 
@@ -41,6 +46,7 @@ let init (props: Props) = {
         ShowQuickView = false; 
         LoadedImages = List.empty;
         LabeledData = List.empty;
+        GroupedLabels = Map.empty;
         SelectedImage = None;
         ImageTransformation = {|X = 0.0; Y = 0.0; Scale = 1.0|}
         ErrorMessage = None }, Cmd.none
@@ -55,6 +61,27 @@ let addPanZoom elementId =
     let options: PanZoomOptions = !!{| maxZoom = Some 5.; minZoom = Some 1.; bounds = Some true; boundsPadding = Some 1.|}
     panzoom.createPanZoom(element, options)
 
+let groupLabels (labeleData: LabeledData list) selectedImage =
+    match selectedImage with
+    | Some image ->
+        match labeleData with
+        | [] -> Map.empty
+        | _ ->  let labeledData = labeleData |> List.find (fun x -> 
+                    match x.FileName  with
+                    | EndsWith image.FileName _ -> true
+                    | _ -> false)
+                
+                labeledData.Labels
+                |> List.groupBy (fun x -> x.Individual)
+                |> List.map (fun (i, ls) -> 
+                    let bs = ls 
+                            |> List.map (fun l -> (l.Bodypart, l.Coordinates))
+                            |> Map.ofList
+                    (i, bs)
+                )
+                |> Map.ofList
+    | None -> Map.empty
+
 let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
@@ -64,9 +91,12 @@ let update props msg state =
     | CSVLoaded content ->
         state, Cmd.OfAsync.either LabeledData.AsyncDecode content DisplayLabels LogError
     | SelectImage file -> 
-        { state with SelectedImage = Some file }, Cmd.none
+        { state with SelectedImage = Some file }, Cmd.ofMsg(GroupLabels (state.LabeledData, Some file))
     | DisplayLabels labels ->
-        { state with LabeledData = labels }, Cmd.none
+        { state with LabeledData = labels }, Cmd.ofMsg(GroupLabels (labels, state.SelectedImage))
+    | GroupLabels (labels, selectedImage) -> 
+        let groups = groupLabels labels selectedImage
+        { state with GroupedLabels = groups}, Cmd.none
     | OnImageTransform transform ->
         { state with ImageTransformation = transform}, Cmd.none
     | LogError e ->
@@ -152,20 +182,82 @@ let miniViews state dispathc =
         ]
     )
 
-let svgElements (config: MinimalConfig) (labeleData: LabeledData list) selectedImage  =
-    match selectedImage with
-    | Some image ->
-        match labeleData with
-        | [] -> List.empty
-        | _ ->  let labeledData = labeleData |> List.find (fun x -> 
-                    match x.FileName  with
-                    | EndsWith image.FileName _ -> true
-                    | _ -> false)
+let getSvgCircle individual bodypart coordinate (radius: int) (fillColors: IDictionary<string, string>) (strokeColor: IDictionary<string, string>) (opacity: float) =
+    let circle = Svg.circle [
+        svg.id $"%s{individual}.%s{bodypart}"
+        svg.cx coordinate.X
+        svg.cy coordinate.Y
+        svg.r radius
+        svg.fill fillColors.[bodypart]
+        svg.fillOpacity opacity
+        svg.stroke strokeColor.[individual]
+        svg.strokeWidth 3
+        prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
+        svg.children [
+            Svg.title $"%s{individual}\n%s{bodypart}"
+        ]
+    ] 
 
-                let circles = labeledData.SvgCircles 10 config.BodyColors config.IndividualColors 0.6
-                let lines = labeledData.Skeleton config "grey" 0.9 |> Array.toList
-                List.append lines circles
-    | None -> List.empty
+    let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
+    let scale = image.clientWidth / image.naturalWidth
+
+    ReactDraggable.draggable [
+        draggable.child circle
+        draggable.scale scale
+        draggable.onDrag (fun e d ->
+            printfn "%f %f" d.x d.y
+        )
+    ]
+
+let getSvgLine c1 c2 strokeColor (opacity: float) = 
+    Svg.line [
+        svg.x1 c1.X
+        svg.y1 c1.Y
+        svg.x2 c2.X
+        svg.y2 c2.Y
+        svg.stroke strokeColor
+        svg.strokeOpacity opacity
+        svg.strokeWidth 2
+    ]
+
+let svgElements (config: MinimalConfig) (groupedLabels: Map<string, Map<string, Coordinates option>>) =
+    if Map.isEmpty groupedLabels then
+        [| Html.none |]
+    else
+        let circles = groupedLabels
+                    |> Map.toArray
+                    |> Array.map (fun (i, m) -> 
+                            m 
+                            |> Map.toArray
+                            |> Array.choose (fun (b, c) -> 
+                                match c with
+                                | Some x -> 
+                                    getSvgCircle i b x 10 config.BodyColors config.IndividualColors 0.6 
+                                    |> Some
+                                | _ -> None
+                            )
+                        )
+                    |> Array.reduce Array.append
+
+        let lines = config.Individuals
+                    |> Array.map (fun i -> 
+                        let individual = groupedLabels.[i]
+                        config.Skeleton 
+                        |> Array.map (fun xs ->
+                            xs 
+                            |> Array.map (fun x -> individual.[x])
+                            |> Array.pairwise
+                            |> Array.choose (fun (c1, c2) -> 
+                                match (c1, c2) with
+                                | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
+                                | _ -> unbox None
+                            )
+                        )
+                        |> Array.reduce Array.append
+                    )
+                    |> Array.reduce Array.append
+
+        Array.concat [lines; circles]
 
 [<ReactComponent>]
 let LabelingCanvas props =
@@ -262,7 +354,7 @@ let LabelingCanvas props =
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            yield! (state.SelectedImage |> svgElements state.Config state.LabeledData)
+                                            yield! (svgElements state.Config state.GroupedLabels)
                                         ]
                                     ]
                                     Html.img [

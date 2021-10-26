@@ -6,7 +6,7 @@ open ConfigDecoder
 open System.Collections.Generic
 
 
-type Coordinate =
+type Coordinates =
     { 
         X: float;
         Y: float
@@ -15,14 +15,10 @@ type Coordinate =
 type Label =
     { 
         Bodypart: string
-        Coordinate: Coordinate option
+        Coordinates: Coordinates option
         Individual: string
         Scorer: string
     }
-
-open Feliz.ReactDraggable
-open Browser.Types
-open Fable.Core
 
 type LabeledData = 
     {
@@ -62,95 +58,9 @@ type LabeledData =
                                         let scorer = lines.Scorers.[i * 2 ]
                                         let individual = lines.Individuals.[i * 2 ]
                                         let bodypart = lines.Bodyparts.[i * 2]
-                                        { Coordinate = x; Scorer = scorer; Individual = individual; Bodypart = bodypart }
+                                        { Coordinates = x; Scorer = scorer; Individual = individual; Bodypart = bodypart }
                                     )
                                     |> Array.toList
                     { FileName = values.[0]; Labels = labels }
                 )
         }
-
-    member this.SvgCircles (radius: int) (fillColors: IDictionary<string, string>) (strokeColor: IDictionary<string, string>) (opacity: float) =
-        let circles ls =
-            ls |> List.choose (fun x ->
-            match x.Coordinate with
-            | Some c ->
-                let circle = Svg.circle [
-                    svg.id $"%s{x.Individual}.%s{x.Bodypart}"
-                    svg.cx c.X
-                    svg.cy c.Y
-                    svg.r radius
-                    svg.fill fillColors.[x.Bodypart]
-                    svg.fillOpacity opacity
-                    svg.stroke strokeColor.[x.Individual]
-                    svg.strokeWidth 3
-                    prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
-                    svg.children [
-                        Svg.title $"%s{x.Individual}\n%s{x.Bodypart}"
-                    ]
-                ] 
-
-                let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
-                let scale = image.clientWidth / image.naturalWidth
-
-                ReactDraggable.draggable [
-                    draggable.child circle
-                    draggable.scale scale
-                    draggable.onDrag (fun e d ->
-                        printfn "%f %f" d.x d.y
-                    )
-                ]
-                |> Some
-            | _ -> unbox None
-        )
-        
-        // circles
-        this.Labels 
-        |> List.groupBy (fun x -> x.Individual)
-        |> List.map (fun (x, ls) -> 
-            Svg.g [
-                svg.id x
-                svg.children [
-                    yield! ls |> circles
-                ]
-            ] 
-        )
-
-    member this.Skeleton config strokeColor (opacity: float) =
-        let svgLine c1 c2 strokeColor (opacity: float) = 
-            Svg.line [
-                svg.x1 c1.X
-                svg.y1 c1.Y
-                svg.x2 c2.X
-                svg.y2 c2.Y
-                svg.stroke strokeColor
-                svg.strokeOpacity opacity
-                svg.strokeWidth 2
-            ]
-            
-        let groups = this.Labels
-                        |> List.groupBy (fun x -> x.Individual)
-                        |> List.map (fun (i, ls) -> 
-                            let bs = ls 
-                                    |> List.map (fun l -> (l.Bodypart, l.Coordinate))
-                                    |> Map.ofList
-                            (i, bs)
-                        )
-                        |> Map.ofList
-
-        config.Individuals
-        |> Array.map (fun i -> 
-            let individual = groups.[i]
-            config.Skeleton 
-            |> Array.map (fun xs ->
-                xs 
-                |> Array.map (fun x -> individual.[x])
-                |> Array.pairwise
-                |> Array.choose (fun (c1, c2) -> 
-                    match (c1, c2) with
-                    | Some c1, Some c2 -> svgLine c1 c2 strokeColor opacity |> Some
-                    | _ -> unbox None
-                )
-            )
-            |> Array.reduce Array.append
-        )
-        |> Array.reduce Array.append
