@@ -16,6 +16,7 @@ open Browser.Types
 open Feliz.ReactDraggable
 
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
+type LabelDrag = { Individual: string; Bodypart: string; X: float; Y: float }
 
 type State = { 
     Config: MinimalConfig 
@@ -23,9 +24,9 @@ type State = {
     LoadedImages: ProjectFile list
     LabeledData: LabeledData list
     GroupedLabels: Map<string,Map<string, Coordinates option>>
-    // LoadedH5Url: string option
     SelectedImage: ProjectFile option
     ImageTransformation: {|X: float; Y: float; Scale: float|}
+    LabelDrag: LabelDrag
     ErrorMessage: string option }
 
 type Props = {| Config: MinimalConfig |}
@@ -39,6 +40,7 @@ type Msg =
     | DisplayLabels of LabeledData list
     | GroupLabels of LabeledData list * ProjectFile option
     | OnImageTransform of {|X: float; Y: float; Scale: float|}
+    | OnLabelDrag of LabelDrag
     | LogError of exn
 
 let init (props: Props) = { 
@@ -49,6 +51,7 @@ let init (props: Props) = {
         GroupedLabels = Map.empty;
         SelectedImage = None;
         ImageTransformation = {|X = 0.0; Y = 0.0; Scale = 1.0|}
+        LabelDrag = { Individual = ""; Bodypart = ""; X = 0.; Y = 0.}
         ErrorMessage = None }, Cmd.none
 
 let selectLoadedFile state file =
@@ -99,6 +102,8 @@ let update props msg state =
         { state with GroupedLabels = groups}, Cmd.none
     | OnImageTransform transform ->
         { state with ImageTransformation = transform}, Cmd.none
+    | OnLabelDrag drag ->
+        { state with LabelDrag = drag }, Cmd.none 
     | LogError e ->
         printfn "Error: %s" e.Message
         state, Cmd.none
@@ -182,7 +187,7 @@ let miniViews state dispathc =
         ]
     )
 
-let getSvgCircle individual bodypart coordinate (radius: int) (fillColors: IDictionary<string, string>) (strokeColor: IDictionary<string, string>) (opacity: float) =
+let getSvgCircle dispatch individual bodypart (coordinate: Coordinates) (radius: int) (fillColors: IDictionary<string, string>) (strokeColor: IDictionary<string, string>) (opacity: float) =
     let circle = Svg.circle [
         svg.id $"%s{individual}.%s{bodypart}"
         svg.cx coordinate.X
@@ -205,11 +210,12 @@ let getSvgCircle individual bodypart coordinate (radius: int) (fillColors: IDict
         draggable.child circle
         draggable.scale scale
         draggable.onDrag (fun e d ->
+            { Individual = individual; Bodypart = bodypart; X = d.x; Y = d.y } |> OnLabelDrag |> dispatch
             printfn "%f %f" d.x d.y
         )
     ]
 
-let getSvgLine c1 c2 strokeColor (opacity: float) = 
+let getSvgLine (c1: Coordinates) (c2: Coordinates) strokeColor (opacity: float) = 
     Svg.line [
         svg.x1 c1.X
         svg.y1 c1.Y
@@ -220,7 +226,7 @@ let getSvgLine c1 c2 strokeColor (opacity: float) =
         svg.strokeWidth 2
     ]
 
-let svgElements (config: MinimalConfig) (groupedLabels: Map<string, Map<string, Coordinates option>>) =
+let svgElements dispatch (config: MinimalConfig) (groupedLabels: Map<string, Map<string, Coordinates option>>) (labelDrag: LabelDrag) =
     if Map.isEmpty groupedLabels then
         [| Html.none |]
     else
@@ -232,7 +238,7 @@ let svgElements (config: MinimalConfig) (groupedLabels: Map<string, Map<string, 
                             |> Array.choose (fun (b, c) -> 
                                 match c with
                                 | Some x -> 
-                                    getSvgCircle i b x 10 config.BodyColors config.IndividualColors 0.6 
+                                    getSvgCircle dispatch i b x 10 config.BodyColors config.IndividualColors 0.6 
                                     |> Some
                                 | _ -> None
                             )
@@ -245,7 +251,12 @@ let svgElements (config: MinimalConfig) (groupedLabels: Map<string, Map<string, 
                         config.Skeleton 
                         |> Array.map (fun xs ->
                             xs 
-                            |> Array.map (fun x -> individual.[x])
+                            |> Array.map (fun x -> 
+                                let drag = labelDrag
+                                match (i, x, individual.[x]) with
+                                | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
+                                | _, _, c -> c
+                            )
                             |> Array.pairwise
                             |> Array.choose (fun (c1, c2) -> 
                                 match (c1, c2) with
@@ -354,7 +365,7 @@ let LabelingCanvas props =
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            yield! (svgElements state.Config state.GroupedLabels)
+                                            yield! (svgElements dispatch state.Config state.GroupedLabels state.LabelDrag)
                                         ]
                                     ]
                                     Html.img [
