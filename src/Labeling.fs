@@ -17,6 +17,7 @@ open Feliz.ReactDraggable
 
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 type LabelDrag = { Individual: string; Bodypart: string; X: float; Y: float }
+type ImageTransformation = { X: float; Y: float; Scale: float }
 
 type State = { 
     Config: MinimalConfig 
@@ -25,8 +26,9 @@ type State = {
     LabeledData: LabeledData list
     GroupedLabels: Map<string,Map<string, Coordinates option>>
     SelectedImage: ProjectFile option
-    ImageTransformation: {|X: float; Y: float; Scale: float|}
+    ImageTransformation: ImageTransformation
     LabelDrag: LabelDrag
+    PanZoom: PanZoom option
     ErrorMessage: string option }
 
 type Props = {| Config: MinimalConfig |}
@@ -39,8 +41,11 @@ type Msg =
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
     | GroupLabels of LabeledData list * ProjectFile option
-    | OnImageTransform of {|X: float; Y: float; Scale: float|}
+    | OnImageTransform of ImageTransformation
     | OnLabelDrag of LabelDrag
+    | OnLabelDragStart
+    | OnLabelDragStop
+    | CreatePanZoom of PanZoom
     | LogError of exn
 
 let init (props: Props) = { 
@@ -50,19 +55,29 @@ let init (props: Props) = {
         LabeledData = List.empty;
         GroupedLabels = Map.empty;
         SelectedImage = None;
-        ImageTransformation = {|X = 0.0; Y = 0.0; Scale = 1.0|}
+        ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 }
         LabelDrag = { Individual = ""; Bodypart = ""; X = 0.; Y = 0.}
+        PanZoom = None;
         ErrorMessage = None }, Cmd.none
+
+let onPanZoom (pz: PanZoom) dispatch =
+    pz.on "transform" (fun e -> 
+        let t = e.getTransform()
+        dispatch (OnImageTransform { X = t.x; Y = t.y; Scale = t.scale } )
+    )
 
 let selectLoadedFile state file =
     match state.SelectedImage with
     | Some file -> Cmd.none
-    | None -> Cmd.ofMsg(SelectImage file)
-
-let addPanZoom elementId = 
-    let element = Browser.Dom.document.getElementById(elementId)
-    let options: PanZoomOptions = !!{| maxZoom = Some 5.; minZoom = Some 1.; bounds = Some true; boundsPadding = Some 1.|}
-    panzoom.createPanZoom(element, options)
+    | None -> 
+        let element = Browser.Dom.document.getElementById("canvasImage")
+        let options: PanZoomOptions = !!{| maxZoom = Some 5.; minZoom = Some 1.; bounds = Some true; boundsPadding = Some 1.|}
+        let pz = panzoom.createPanZoom(element, options)
+        Cmd.batch [   
+            Cmd.ofMsg (SelectImage file)
+            Cmd.ofMsg (CreatePanZoom pz)
+            Cmd.ofSub (onPanZoom pz)
+        ]
 
 let groupLabels (labeleData: LabeledData list) selectedImage =
     match selectedImage with
@@ -103,7 +118,24 @@ let update props msg state =
     | OnImageTransform transform ->
         { state with ImageTransformation = transform}, Cmd.none
     | OnLabelDrag drag ->
-        { state with LabelDrag = drag }, Cmd.none 
+        { state with LabelDrag = drag }, Cmd.none
+    | OnLabelDragStart -> 
+        match state.PanZoom with
+        | Some pz -> 
+            printfn "- pz pause"
+            pz.pause()
+        | None -> 
+            printfn "no panzoom" |> ignore
+        state, Cmd.none
+    | OnLabelDragStop -> 
+        match state.PanZoom with
+        | Some pz -> 
+            printfn "+ pz resume"
+            pz.resume()
+        | None -> 
+            printfn "no panzoom" |> ignore
+        state, Cmd.none
+    | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
     | LogError e ->
         printfn "Error: %s" e.Message
         state, Cmd.none
@@ -127,13 +159,7 @@ let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
         reader.readAsText(blob)
     | _ -> ()
 
-let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
-    let pz = addPanZoom "canvasImage"
-    pz.on "transform" (fun e -> 
-        let t = e.getTransform()
-        dispatch (OnImageTransform {|X = t.x; Y = t.y; Scale = t.scale|} )
-    )
-    
+let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =    
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
         | EndsWith ".png" _ -> true
@@ -187,15 +213,15 @@ let miniViews state dispathc =
         ]
     )
 
-let getSvgCircle dispatch individual bodypart (coordinate: Coordinates) (radius: int) (fillColors: IDictionary<string, string>) (strokeColor: IDictionary<string, string>) (opacity: float) =
+let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates) (radius: int) (config: MinimalConfig) (opacity: float) =
     let circle = Svg.circle [
         svg.id $"%s{individual}.%s{bodypart}"
         svg.cx coordinate.X
         svg.cy coordinate.Y
         svg.r radius
-        svg.fill fillColors.[bodypart]
+        svg.fill config.BodyColors.[bodypart]
         svg.fillOpacity opacity
-        svg.stroke strokeColor.[individual]
+        svg.stroke config.IndividualColors.[individual]
         svg.strokeWidth 3
         prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
         svg.children [
@@ -204,14 +230,22 @@ let getSvgCircle dispatch individual bodypart (coordinate: Coordinates) (radius:
     ] 
 
     let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
-    let scale = image.clientWidth / image.naturalWidth
+    let scale = image.clientWidth / image.naturalWidth * transform.Scale
 
     ReactDraggable.draggable [
         draggable.child circle
         draggable.scale scale
-        draggable.onDrag (fun e d ->
+        draggable.onDrag (fun _ d ->
             { Individual = individual; Bodypart = bodypart; X = d.x; Y = d.y } |> OnLabelDrag |> dispatch
-            printfn "%f %f" d.x d.y
+            // printfn "%f %f" d.x d.y
+        )
+        draggable.onStart (fun _ _ ->
+            printfn "+ drag started"
+            OnLabelDragStart |> dispatch
+        )
+        draggable.onStop (fun _ _ ->
+            printfn "- drag stopped"
+            OnLabelDragStop |> dispatch
         )
     ]
 
@@ -226,7 +260,7 @@ let getSvgLine (c1: Coordinates) (c2: Coordinates) strokeColor (opacity: float) 
         svg.strokeWidth 2
     ]
 
-let svgElements dispatch (config: MinimalConfig) (groupedLabels: Map<string, Map<string, Coordinates option>>) (labelDrag: LabelDrag) =
+let svgElements dispatch transform (config: MinimalConfig) (groupedLabels: Map<string, Map<string, Coordinates option>>) (labelDrag: LabelDrag) =
     if Map.isEmpty groupedLabels then
         [| Html.none |]
     else
@@ -238,7 +272,7 @@ let svgElements dispatch (config: MinimalConfig) (groupedLabels: Map<string, Map
                             |> Array.choose (fun (b, c) -> 
                                 match c with
                                 | Some x -> 
-                                    getSvgCircle dispatch i b x 10 config.BodyColors config.IndividualColors 0.6 
+                                    getSvgCircle dispatch transform i b x 10 config 0.6 
                                     |> Some
                                 | _ -> None
                             )
@@ -252,7 +286,6 @@ let svgElements dispatch (config: MinimalConfig) (groupedLabels: Map<string, Map
                         |> Array.map (fun xs ->
                             xs 
                             |> Array.map (fun x -> 
-                                let drag = labelDrag
                                 match (i, x, individual.[x]) with
                                 | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
                                 | _, _, c -> c
@@ -365,7 +398,7 @@ let LabelingCanvas props =
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            yield! (svgElements dispatch state.Config state.GroupedLabels state.LabelDrag)
+                                            yield! (svgElements dispatch state.ImageTransformation state.Config state.GroupedLabels state.LabelDrag)
                                         ]
                                     ]
                                     Html.img [
