@@ -23,7 +23,7 @@ type Label =
 type LabeledData = 
     {
         FileName: string
-        Labels: Label list
+        Labels: Map<string,Map<string, Coordinates option>>
     }
 
     static member AsyncDecode (csvFile: string) =
@@ -60,7 +60,31 @@ type LabeledData =
                                         let bodypart = lines.Bodyparts.[i * 2]
                                         { Coordinates = x; Scorer = scorer; Individual = individual; Bodypart = bodypart }
                                     )
-                                    |> Array.toList
+                                    |> Array.groupBy (fun x -> x.Individual)
+                                    |> Array.map (fun (i, ls) -> 
+                                        let bs = ls 
+                                                |> Array.map (fun l -> (l.Bodypart, l.Coordinates))
+                                                |> Map.ofArray
+                                        (i, bs)
+                                    )
+                                    |> Map.ofArray
                     { FileName = values.[0]; Labels = labels }
                 )
         }
+
+    static member Encode (config: MinimalConfig) (data: LabeledData list) =
+        let bodyparts = config.Bodyparts
+        let individuals = config.Individuals
+
+        let coordinate c =
+            match c with
+            | Some c -> $"%f{c.X},%f{c.Y}"
+            | None -> ","
+
+        // individuals |> Array.map (fun i ->
+        //     bodyparts |> Array.map (fun b ->
+        //         data |> map
+        //     )
+        // )
+
+        ""

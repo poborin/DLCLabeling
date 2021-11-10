@@ -5,7 +5,9 @@ open Thoth.Json
 open ColorMap
 
 type MinimalConfig = 
-    { Individuals: array<string>
+    { 
+      Scorer: string
+      Individuals: array<string>
       Uniquebodyparts: array<string>
       Multianimalbodyparts: array<string>
       Skeleton: array<array<string>>
@@ -20,15 +22,16 @@ type MinimalConfig =
         Decode.object
             (fun get -> 
                 {
-                    Individuals = get.Required.Field "individuals" (Decode.array Decode.string)
-                    Uniquebodyparts = get.Required.Field "uniquebodyparts" (Decode.array Decode.string)
-                    Multianimalbodyparts = get.Required.Field "multianimalbodyparts" (Decode.array Decode.string)
-                    Skeleton = get.Required.Field "skeleton" (Decode.array (Decode.array Decode.string))
-                    Bodyparts = get.Required.Field "bodyparts" Decode.string
-                    SkeletonColor = get.Required.Field "skeleton_color" Decode.string
-                    Dotsize = get.Required.Field "dotsize" Decode.int
-                    Alphavalue = get.Required.Field "alphavalue" Decode.float
-                    Colormap = get.Required.Field "colormap" Decode.string
+                  Scorer = get.Required.Field "scorer" Decode.string
+                  Individuals = get.Required.Field "individuals" (Decode.array Decode.string)
+                  Uniquebodyparts = get.Required.Field "uniquebodyparts" (Decode.array Decode.string)
+                  Multianimalbodyparts = get.Required.Field "multianimalbodyparts" (Decode.array Decode.string)
+                  Skeleton = get.Required.Field "skeleton" (Decode.array (Decode.array Decode.string))
+                  Bodyparts = get.Required.Field "bodyparts" Decode.string
+                  SkeletonColor = get.Required.Field "skeleton_color" Decode.string
+                  Dotsize = get.Required.Field "dotsize" Decode.int
+                  Alphavalue = get.Required.Field "alphavalue" Decode.float
+                  Colormap = get.Required.Field "colormap" Decode.string
                 })
 
     member this.BodyColors =
@@ -47,7 +50,9 @@ type MinimalConfig =
       |> dict
 
     static member Stub =
-        { Individuals = [|"individual1"; "individual2"; "individual3"; "individual4"; "individual5"; "individual6"; "individual7"; "individual8"|]
+        { 
+          Scorer = "Pavel"
+          Individuals = [|"individual1"; "individual2"; "individual3"; "individual4"; "individual5"; "individual6"; "individual7"; "individual8"|]
           Uniquebodyparts = [|"part1"; "part2"|]
           Multianimalbodyparts = [|"forehead";
                                     "nose";

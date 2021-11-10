@@ -11,7 +11,6 @@ open panzoom
 open panzoom.PanZoom
 open Data
 open Utils
-open System.Collections.Generic
 open Browser.Types
 open Feliz.ReactDraggable
 
@@ -24,7 +23,6 @@ type State = {
     ShowQuickView: bool
     LoadedImages: ProjectFile list
     LabeledData: LabeledData list
-    GroupedLabels: Map<string,Map<string, Coordinates option>>
     SelectedImage: ProjectFile option
     ImageTransformation: ImageTransformation
     LabelDrag: LabelDrag
@@ -40,7 +38,6 @@ type Msg =
     | CSVLoaded of string
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
-    | GroupLabels of LabeledData list * ProjectFile option
     | OnImageTransform of ImageTransformation
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
@@ -53,7 +50,6 @@ let init (props: Props) = {
         ShowQuickView = false; 
         LoadedImages = List.empty;
         LabeledData = List.empty;
-        GroupedLabels = Map.empty;
         SelectedImage = None;
         ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 }
         LabelDrag = { Individual = ""; Bodypart = ""; X = 0.; Y = 0.}
@@ -79,27 +75,6 @@ let selectLoadedFile state file =
             Cmd.ofSub (onPanZoom pz)
         ]
 
-let groupLabels (labeleData: LabeledData list) selectedImage =
-    match selectedImage with
-    | Some image ->
-        match labeleData with
-        | [] -> Map.empty
-        | _ ->  let labeledData = labeleData |> List.find (fun x -> 
-                    match x.FileName  with
-                    | EndsWith image.FileName _ -> true
-                    | _ -> false)
-                
-                labeledData.Labels
-                |> List.groupBy (fun x -> x.Individual)
-                |> List.map (fun (i, ls) -> 
-                    let bs = ls 
-                            |> List.map (fun l -> (l.Bodypart, l.Coordinates))
-                            |> Map.ofList
-                    (i, bs)
-                )
-                |> Map.ofList
-    | None -> Map.empty
-
 let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
@@ -109,12 +84,9 @@ let update props msg state =
     | CSVLoaded content ->
         state, Cmd.OfAsync.either LabeledData.AsyncDecode content DisplayLabels LogError
     | SelectImage file -> 
-        { state with SelectedImage = Some file }, Cmd.ofMsg(GroupLabels (state.LabeledData, Some file))
+        { state with SelectedImage = Some file }, Cmd.none
     | DisplayLabels labels ->
-        { state with LabeledData = labels }, Cmd.ofMsg(GroupLabels (labels, state.SelectedImage))
-    | GroupLabels (labels, selectedImage) -> 
-        let groups = groupLabels labels selectedImage
-        { state with GroupedLabels = groups}, Cmd.none
+        { state with LabeledData = labels }, Cmd.none
     | OnImageTransform transform ->
         { state with ImageTransformation = transform}, Cmd.none
     | OnLabelDrag drag ->
@@ -260,48 +232,55 @@ let getSvgLine (c1: Coordinates) (c2: Coordinates) strokeColor (opacity: float) 
         svg.strokeWidth 2
     ]
 
-let svgElements dispatch transform (config: MinimalConfig) (groupedLabels: Map<string, Map<string, Coordinates option>>) (labelDrag: LabelDrag) =
-    if Map.isEmpty groupedLabels then
-        [| Html.none |]
-    else
-        let circles = groupedLabels
-                    |> Map.toArray
-                    |> Array.map (fun (i, m) -> 
-                            m 
+let svgElements dispatch transform (config: MinimalConfig) (labeledData: LabeledData list) selectedImage (labelDrag: LabelDrag) =
+    match selectedImage with
+    | Some image ->
+        match labeledData with
+        | [] -> [| Html.none |]
+        | _ ->  let grouped = labeledData |> List.find (fun x -> 
+                    match x.FileName  with
+                    | EndsWith image.FileName _ -> true
+                    | _ -> false)
+
+                let circles = grouped.Labels
                             |> Map.toArray
-                            |> Array.choose (fun (b, c) -> 
-                                match c with
-                                | Some x -> 
-                                    getSvgCircle dispatch transform i b x 10 config 0.6 
-                                    |> Some
-                                | _ -> None
-                            )
-                        )
-                    |> Array.reduce Array.append
+                            |> Array.map (fun (i, m) -> 
+                                    m 
+                                    |> Map.toArray
+                                    |> Array.choose (fun (b, c) -> 
+                                        match c with
+                                        | Some x -> 
+                                            getSvgCircle dispatch transform i b x 10 config 0.6 
+                                            |> Some
+                                        | _ -> None
+                                    )
+                                )
+                            |> Array.reduce Array.append
 
-        let lines = config.Individuals
-                    |> Array.map (fun i -> 
-                        let individual = groupedLabels.[i]
-                        config.Skeleton 
-                        |> Array.map (fun xs ->
-                            xs 
-                            |> Array.map (fun x -> 
-                                match (i, x, individual.[x]) with
-                                | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
-                                | _, _, c -> c
+                let lines = config.Individuals
+                            |> Array.map (fun i -> 
+                                let individual = grouped.Labels.[i]
+                                config.Skeleton 
+                                |> Array.map (fun xs ->
+                                    xs 
+                                    |> Array.map (fun x -> 
+                                        match (i, x, individual.[x]) with
+                                        | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
+                                        | _, _, c -> c
+                                    )
+                                    |> Array.pairwise
+                                    |> Array.choose (fun (c1, c2) -> 
+                                        match (c1, c2) with
+                                        | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
+                                        | _ -> unbox None
+                                    )
+                                )
+                                |> Array.reduce Array.append
                             )
-                            |> Array.pairwise
-                            |> Array.choose (fun (c1, c2) -> 
-                                match (c1, c2) with
-                                | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
-                                | _ -> unbox None
-                            )
-                        )
-                        |> Array.reduce Array.append
-                    )
-                    |> Array.reduce Array.append
+                            |> Array.reduce Array.append
 
-        Array.concat [lines; circles]
+                Array.concat [lines; circles]
+    | None -> [| Html.none |]
 
 [<ReactComponent>]
 let LabelingCanvas props =
@@ -398,7 +377,7 @@ let LabelingCanvas props =
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            yield! (svgElements dispatch state.ImageTransformation state.Config state.GroupedLabels state.LabelDrag)
+                                            yield! (svgElements dispatch state.ImageTransformation state.Config state.LabeledData state.SelectedImage state.LabelDrag)
                                         ]
                                     ]
                                     Html.img [
