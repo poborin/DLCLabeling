@@ -82,7 +82,7 @@ let update props msg state =
     | ImageLoaded file -> 
         { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
     | CSVLoaded content ->
-        state, Cmd.OfAsync.either LabeledData.AsyncDecode content DisplayLabels LogError
+        state, Cmd.OfAsync.either CSVData.AsyncDecode content DisplayLabels LogError
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
     | DisplayLabels labels ->
