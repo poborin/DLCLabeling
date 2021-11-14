@@ -6,8 +6,8 @@ open System.Collections.Generic
 
 type Coordinates =
     { 
-        X: float;
-        Y: float
+        X: double;
+        Y: double
     }
 
 type LabeledData = {
@@ -63,52 +63,57 @@ type CSVData =
                 )
         }
 
-    static member Encode (config: MinimalConfig) (data: LabeledData list) =
-        let bodyparts = config.Multianimalbodyparts
-        let individuals = config.Individuals
+    static member AsyncEncode config data =
+        async {
+            let bodyparts = config.Multianimalbodyparts
+            let individuals = config.Individuals
 
-        let coordinate c =
-            match c with
-            | Some c -> $"%f{c.X},%f{c.Y}"
-            | None -> ","
+            let coordinate c =
+                match c with
+                | Some c -> $"%f{c.X},%f{c.Y}"
+                | None -> ","
 
-        let scorerHeader = Array.create (individuals.Length * bodyparts.Length * 2) config.Scorer 
-                            |> Array.append [|"scorer"|]
-                            |> String.concat ","
-        
-        let individualsHeader = individuals
-                                |> Array.map (fun x -> Array.create (bodyparts.Length * 2) x)
-                                |> Array.reduce Array.append
-                                |> Array.append [|"individuals"|]
+            let scorerHeader = Array.create (individuals.Length * bodyparts.Length * 2) config.Scorer 
+                                |> Array.append [|"scorer"|]
                                 |> String.concat ","
-
-        let bodypartsHeader = individuals
-                                |> Array.map (fun _ ->
-                                    bodyparts
-                                    |> Array.map (fun x -> [|x; x|])
+            
+            let individualsHeader = individuals
+                                    |> Array.map (fun x -> Array.create (bodyparts.Length * 2) x)
                                     |> Array.reduce Array.append
-                                )
-                                |> Array.reduce Array.append
-                                |> Array.append [|"bodyparts"|]
-                                |> String.concat ","
+                                    |> Array.append [|"individuals"|]
+                                    |> String.concat ","
 
-        let coordiantesHeader = Array.create (individuals.Length * bodyparts.Length) [|"x"; "y"|]
-                                |> Array.reduce Array.append
-                                |> Array.append [|"coords"|]
-                                |> String.concat ","
+            let bodypartsHeader = individuals
+                                    |> Array.map (fun _ ->
+                                        bodyparts
+                                        |> Array.map (fun x -> [|x; x|])
+                                        |> Array.reduce Array.append
+                                    )
+                                    |> Array.reduce Array.append
+                                    |> Array.append [|"bodyparts"|]
+                                    |> String.concat ","
 
-        let body = data |> List.map (fun d ->
-            d.Labels
-            |> Map.toArray
-            |> Array.map (fun (_, g) -> g
+            let coordiantesHeader = Array.create (individuals.Length * bodyparts.Length) [|"x"; "y"|]
+                                    |> Array.reduce Array.append
+                                    |> Array.append [|"coords"|]
+                                    |> String.concat ","
+
+            let res = data 
+                        |> List.toArray
+                        |> Array.map (fun d ->
+                                        d.Labels
                                         |> Map.toArray
-                                        |> Array.map (fun (_, c) -> c)
-                         )
-            |> Array.reduce Array.append
-            |> Array.map coordinate
-            |> Array.append [|d.FileName|]
-            |> String.concat ","
-        )
+                                        |> Array.map (fun (_, g) -> g
+                                                                    |> Map.toArray
+                                                                    |> Array.map (fun (_, c) -> c)
+                                                    )
+                                        |> Array.reduce Array.append
+                                        |> Array.map coordinate
+                                        |> Array.append [|d.FileName|]
+                                        |> String.concat ","
+                                    )
+                        |> Array.append [|scorerHeader; individualsHeader; bodypartsHeader; coordiantesHeader|]
+                        |> String.concat "\n"
 
-        [|scorerHeader; individualsHeader; bodypartsHeader; coordiantesHeader|]
-        |> String.concat "\n"
+            return res
+        }

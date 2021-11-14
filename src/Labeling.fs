@@ -43,6 +43,8 @@ type Msg =
     | OnLabelDragStart
     | OnLabelDragStop
     | CreatePanZoom of PanZoom
+    | GenerateCSV
+    | SaveCSV of string
     | LogError of exn
 
 let init (props: Props) = { 
@@ -67,13 +69,21 @@ let selectLoadedFile state file =
     | Some file -> Cmd.none
     | None -> 
         let element = Browser.Dom.document.getElementById("canvasImage")
-        let options: PanZoomOptions = !!{| maxZoom = Some 5.; minZoom = Some 1.; bounds = Some true; boundsPadding = Some 1.|}
+        let bounds: BoundsOption = Boolean(true)
+        let options: PanZoomOptions = !!{| maxZoom = Some 5.; minZoom = Some 1.; bounds = Some bounds; boundsPadding = Some 1.|}
         let pz = panzoom.createPanZoom(element, options)
         Cmd.batch [   
             Cmd.ofMsg (SelectImage file)
             Cmd.ofMsg (CreatePanZoom pz)
             Cmd.ofSub (onPanZoom pz)
         ]
+
+let download fileName fileContent =
+    let anchor = Browser.Dom.document.createElement "a"
+    let encodedContent = fileContent |> sprintf "data:text/csv;charset=utf-8,%s" |> Fable.Core.JS.encodeURI
+    anchor.setAttribute("href",  encodedContent)
+    anchor.setAttribute("download", fileName)
+    anchor.click()
 
 let update props msg state =
     match msg with 
@@ -108,6 +118,12 @@ let update props msg state =
             printfn "no panzoom" |> ignore
         state, Cmd.none
     | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
+    | GenerateCSV -> 
+        let encode = CSVData.AsyncEncode state.Config
+        state, Cmd.OfAsync.either encode state.LabeledData SaveCSV LogError
+    | SaveCSV csv-> 
+        download $"CollectedData_%s{state.Config.Scorer}" csv
+        state, Cmd.none
     | LogError e ->
         printfn "Error: %s" e.Message
         state, Cmd.none
@@ -314,7 +330,12 @@ let LabelingCanvas props =
                                         ]
                                     ]
                                     Bulma.navbarDivider []
-                                    Bulma.navbarItem.a [ prop.text "Save" ]
+                                    Bulma.navbarItem.a [ 
+                                        prop.text "Save"
+                                        prop.onClick (fun _ -> 
+                                            GenerateCSV |> dispatch
+                                        )
+                                    ]
                                 ]
                             ]
                         ]
