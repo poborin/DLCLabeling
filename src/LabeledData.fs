@@ -32,6 +32,7 @@ type CSVData =
                             | Prefix "individuals," rest -> {| acc with Individuals = rest.Split(',') |}
                             | Prefix "bodyparts," rest -> {| acc with Bodyparts = rest.Split(',') |}
                             | Prefix "coords" _ -> acc
+                            | "" -> acc
                             | row -> {| acc with Files = acc.Files @ [row] |}
                             )
 
@@ -100,13 +101,13 @@ type CSVData =
 
             let res = data 
                         |> List.toArray
+                        |> Array.filter (fun x -> x.FileName.Length > 0)
                         |> Array.map (fun d ->
-                                        d.Labels
-                                        |> Map.toArray
-                                        |> Array.map (fun (_, g) -> g
-                                                                    |> Map.toArray
-                                                                    |> Array.map (fun (_, c) -> c)
-                                                    )
+                                        individuals
+                                        |> Array.map (fun i -> 
+                                            let group = d.Labels.[i]
+                                            bodyparts |> Array.map (fun b -> group.[b])
+                                        )
                                         |> Array.reduce Array.append
                                         |> Array.map coordinate
                                         |> Array.append [|d.FileName|]
