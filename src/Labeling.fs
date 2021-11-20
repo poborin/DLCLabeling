@@ -14,8 +14,10 @@ open Utils
 open Browser.Types
 open Feliz.ReactDraggable
 
+type Bodypart = string
+type Individual = string
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
-type LabelDrag = { Individual: string; Bodypart: string; X: float; Y: float }
+type LabelDrag = { Individual: Individual; Bodypart: Bodypart; X: float; Y: float }
 type ImageTransformation = { X: float; Y: float; Scale: float }
 
 type State = { 
@@ -24,6 +26,7 @@ type State = {
     LoadedImages: ProjectFile list
     LabeledData: LabeledData list
     SelectedImage: ProjectFile option
+    SelectedLabel: (Individual * Bodypart)
     ImageTransformation: ImageTransformation
     LabelDrag: LabelDrag
     PanZoom: PanZoom option
@@ -53,6 +56,7 @@ let init (props: Props) = {
         LoadedImages = List.empty;
         LabeledData = List.empty;
         SelectedImage = None;
+        SelectedLabel = (props.Config.Individuals.[0], props.Config.Multianimalbodyparts.[0])
         ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 }
         LabelDrag = { Individual = ""; Bodypart = ""; X = 0.; Y = 0.}
         PanZoom = None;
@@ -433,7 +437,17 @@ let LabelingCanvas props =
                         Html.strong "Individuals"
                     ]
                     Bulma.select [
-                        state.Config.Individuals |> Array.map (fun x -> Html.option x) |> prop.children
+                        state.Config.Individuals
+                        |> Array.map (fun x -> 
+                            let i, _ = state.SelectedLabel
+                            match state.SelectedLabel with
+                            | (i, _) when i = x -> Html.option [
+                                    prop.custom ("label", i)
+                                    prop.selected true
+                                ]
+                            | _ -> Html.option x
+                        )
+                        |> prop.children
                     ]
                     Html.p [
                         Html.strong "Body parts"
@@ -441,8 +455,11 @@ let LabelingCanvas props =
                     Html.div [
                         state.Config.Multianimalbodyparts 
                         |> Array.map (fun x -> 
+                            let props = match state.SelectedLabel with
+                                        | (_, b) when b = x -> [ prop.id x; prop.name "radio"; prop.custom("checked", "checked")]
+                                        | _ -> [ prop.id x; prop.name "radio";]
                             Bulma.field.div [ 
-                                Checkradio.radio [ prop.id x; prop.name "radio" ]
+                                Checkradio.radio props
                                 Html.label [ prop.htmlFor x; prop.text x ]
                             ])
                         |> prop.children
