@@ -45,6 +45,8 @@ type Msg =
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
     | OnLabelDragStop
+    | OnIndividualSelected of Individual
+    | OnBodypartSelected of Bodypart
     | CreatePanZoom of PanZoom
     | GenerateCSV
     | SaveCSV of string
@@ -121,6 +123,12 @@ let update props msg state =
         | None -> 
             printfn "no panzoom" |> ignore
         state, Cmd.none
+    | OnIndividualSelected individual -> 
+        let _, b = state.SelectedLabel
+        { state with SelectedLabel = (individual, b) }, Cmd.none
+    | OnBodypartSelected bodypart ->
+        let i, _ = state.SelectedLabel
+        { state with SelectedLabel = (i, bodypart)}, Cmd.none
     | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
     | GenerateCSV -> 
         let encode = CSVData.AsyncEncode state.Config
@@ -437,32 +445,47 @@ let LabelingCanvas props =
                         Html.strong "Individuals"
                     ]
                     Bulma.select [
-                        state.Config.Individuals
-                        |> Array.map (fun x -> 
-                            let i, _ = state.SelectedLabel
-                            match state.SelectedLabel with
-                            | (i, _) when i = x -> Html.option [
-                                    prop.custom ("label", i)
-                                    prop.selected true
-                                ]
-                            | _ -> Html.option x
+                        prop.onChange(fun (e: Event) ->
+                            let i = (e.target :?> Browser.Types.HTMLSelectElement).selectedIndex
+                            let individual = state.Config.Individuals.[i]
+                            OnIndividualSelected individual |> dispatch
                         )
-                        |> prop.children
+                        prop.children [
+                            yield! state.Config.Individuals
+                                    |> Array.mapi (fun i x -> 
+                                        let individual, _ = state.SelectedLabel
+                                        match state.SelectedLabel with
+                                        | (i, _) when individual = x -> Html.option [
+                                                prop.value i
+                                                prop.text x
+                                                prop.selected true
+                                            ]
+                                        | _ -> Html.option [
+                                            prop.value i
+                                            prop.text x
+                                        ]
+                                    )
+                        ]
                     ]
                     Html.p [
                         Html.strong "Body parts"
                     ]
                     Html.div [
-                        state.Config.Multianimalbodyparts 
-                        |> Array.map (fun x -> 
-                            let props = match state.SelectedLabel with
-                                        | (_, b) when b = x -> [ prop.id x; prop.name "radio"; prop.custom("checked", "checked")]
-                                        | _ -> [ prop.id x; prop.name "radio";]
-                            Bulma.field.div [ 
-                                Checkradio.radio props
-                                Html.label [ prop.htmlFor x; prop.text x ]
-                            ])
-                        |> prop.children
+                        prop.children [
+                            yield! state.Config.Multianimalbodyparts 
+                                    |> Array.map (fun x -> 
+                                        let check = prop.onChange(fun (b: String) -> 
+                                            OnBodypartSelected b |> dispatch
+                                        )
+                                        let props = match state.SelectedLabel with
+                                                    | (_, b) when b = x -> [ prop.id x; prop.value x; prop.name "radio"; prop.custom("checked", "checked"); check]
+                                                    | _ -> [ prop.id x; prop.value x; prop.name "radio"; check]
+                                        Bulma.field.div [ 
+                                            Checkradio.radio props
+                                            Html.label [ prop.htmlFor x; prop.text x ]
+                                        ])
+                        ]
+
                     ]
                 ]
             ]
