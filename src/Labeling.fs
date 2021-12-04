@@ -13,6 +13,7 @@ open Data
 open Utils
 open Browser.Types
 open Feliz.ReactDraggable
+open Feliz.UseListener
 
 type Bodypart = string
 type Individual = string
@@ -47,6 +48,7 @@ type Msg =
     | OnLabelDragStop
     | OnIndividualSelected of Individual
     | OnBodypartSelected of Bodypart
+    | OnDeleteAnnotation of (Individual * Bodypart)
     | CreatePanZoom of PanZoom
     | GenerateCSV
     | SaveCSV of string
@@ -83,6 +85,27 @@ let selectLoadedFile state file =
             Cmd.ofMsg (CreatePanZoom pz)
             Cmd.ofSub (onPanZoom pz)
         ]
+
+let deleteSeletedLabel state label =
+    match state.SelectedImage with
+    | Some file ->
+        let i, b = label
+        let grouped = state.LabeledData |> List.find (fun x -> 
+            match x.FileName  with
+            | EndsWith file.FileName _ -> true
+            | _ -> false)
+
+        match grouped.Labels.ContainsKey i with
+        | true -> 
+            let newIndivifdual = grouped.Labels.[i].Remove b
+            let newLabels = grouped.Labels.Add (i, newIndivifdual)
+            state.LabeledData |> List.map (fun x -> 
+                match x.FileName  with
+                | EndsWith file.FileName _ -> {FileName = x.FileName; Labels = newLabels}
+                | _ -> x)
+        | false -> state.LabeledData
+        
+    | None -> state.LabeledData
 
 let download fileName fileContent =
     let anchor = Browser.Dom.document.createElement "a"
@@ -129,6 +152,9 @@ let update props msg state =
     | OnBodypartSelected bodypart ->
         let i, _ = state.SelectedLabel
         { state with SelectedLabel = (i, bodypart)}, Cmd.none
+    | OnDeleteAnnotation selectedLabel ->
+        let labeledData = deleteSeletedLabel state selectedLabel
+        {state with LabeledData = labeledData}, Cmd.none
     | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
     | GenerateCSV -> 
         let encode = CSVData.AsyncEncode state.Config
@@ -285,34 +311,43 @@ let svgElements dispatch transform (config: MinimalConfig) (labeledData: Labeled
                                 )
                             |> Array.reduce Array.append
 
-                let lines = config.Individuals
-                            |> Array.map (fun i -> 
-                                let individual = grouped.Labels.[i]
-                                config.Skeleton 
-                                |> Array.map (fun xs ->
-                                    xs 
-                                    |> Array.map (fun x -> 
-                                        match (i, x, individual.[x]) with
-                                        | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
-                                        | _, _, c -> c
-                                    )
-                                    |> Array.pairwise
-                                    |> Array.choose (fun (c1, c2) -> 
-                                        match (c1, c2) with
-                                        | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
-                                        | _ -> unbox None
-                                    )
-                                )
-                                |> Array.reduce Array.append
-                            )
-                            |> Array.reduce Array.append
+                // let lines = config.Individuals
+                //             |> Array.map (fun i -> 
+                //                 let individual = grouped.Labels.[i]
+                //                 config.Skeleton 
+                //                 |> Array.map (fun xs ->
+                //                     xs 
+                //                     |> Array.map (fun x -> 
+                //                         match (i, x, individual.[x]) with
+                //                         | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
+                //                         | _, _, c -> c
+                //                     )
+                //                     |> Array.pairwise
+                //                     |> Array.choose (fun (c1, c2) -> 
+                //                         match (c1, c2) with
+                //                         | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
+                //                         | _ -> unbox None
+                //                     )
+                //                 )
+                //                 |> Array.reduce Array.append
+                //             )
+                //             |> Array.reduce Array.append
 
-                Array.concat [lines; circles]
+                // Array.concat [lines; circles]
+
+                circles
     | None -> [| Html.none |]
 
 [<ReactComponent>]
 let LabelingCanvas props =
     let state, dispatch = React.useElmish(init props, update props, [| |])
+
+    React.useListener.onKeyDown(fun ev ->
+        match ev.key with
+        | "Backspace" | "Delete" -> OnDeleteAnnotation state.SelectedLabel |> dispatch
+        | x -> printfn "%s" x
+    )
+
     Html.div [
         Bulma.navbar [
             Bulma.color.isPrimary
