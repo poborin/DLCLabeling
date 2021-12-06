@@ -348,6 +348,9 @@ let LabelingCanvas props =
         | "Backspace" | "Delete" -> OnDeleteAnnotation state.SelectedLabel |> dispatch
         | x -> printfn "%s" x
     )
+    React.useListener.onContextMenu(fun ev ->
+        ev.preventDefault()
+    )
 
     Html.div [
         Bulma.navbar [
@@ -436,6 +439,9 @@ let LabelingCanvas props =
                                     style.overflow.hidden
                                     style.userSelect.none
                                 ]
+                                prop.onContextMenu (fun ev ->
+                                    printfn "click"
+                                )
                                 prop.children [
                                     Svg.svg [
                                         prop.custom ("transform-origin", "0px 0px 0px") :?> ISvgAttribute
