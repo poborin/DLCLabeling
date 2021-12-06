@@ -311,31 +311,32 @@ let svgElements dispatch transform (config: MinimalConfig) (labeledData: Labeled
                                 )
                             |> Array.reduce Array.append
 
-                // let lines = config.Individuals
-                //             |> Array.map (fun i -> 
-                //                 let individual = grouped.Labels.[i]
-                //                 config.Skeleton 
-                //                 |> Array.map (fun xs ->
-                //                     xs 
-                //                     |> Array.map (fun x -> 
-                //                         match (i, x, individual.[x]) with
-                //                         | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
-                //                         | _, _, c -> c
-                //                     )
-                //                     |> Array.pairwise
-                //                     |> Array.choose (fun (c1, c2) -> 
-                //                         match (c1, c2) with
-                //                         | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
-                //                         | _ -> unbox None
-                //                     )
-                //                 )
-                //                 |> Array.reduce Array.append
-                //             )
-                //             |> Array.reduce Array.append
+                let lines = config.Individuals
+                            |> Array.map (fun i -> 
+                                let individual = grouped.Labels.[i]
+                                config.Skeleton 
+                                |> Array.map (fun xs ->
+                                    xs 
+                                    |> Array.map (fun x -> 
+                                        if individual.ContainsKey x then
+                                            match (i, x, individual.[x]) with
+                                            | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
+                                            | _, _, c -> c
+                                        else
+                                            None
+                                    )
+                                    |> Array.pairwise
+                                    |> Array.choose (fun (c1, c2) -> 
+                                        match (c1, c2) with
+                                        | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
+                                        | _ -> unbox None
+                                    )
+                                )
+                                |> Array.reduce Array.append
+                            )
+                            |> Array.reduce Array.append
 
-                // Array.concat [lines; circles]
-
-                circles
+                Array.concat [lines; circles]
     | None -> [| Html.none |]
 
 [<ReactComponent>]
