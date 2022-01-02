@@ -4,6 +4,9 @@ open Utils
 open ConfigDecoder
 open System.Collections.Generic
 
+type Bodypart = string
+type Individual = string
+
 type Coordinates =
     { 
         X: double;
@@ -12,15 +15,15 @@ type Coordinates =
 
 type LabeledData = {
     FileName: string;
-    Labels: Map<string,Map<string, Coordinates option>>
+    Labels: Map<Individual,Map<Bodypart, Coordinates option>>
 } 
 
 type CSVData =
     static member AsyncDecode (csvFile: string) =
         let initRecord = {|
             Scorers = Array.empty<string>
-            Individuals = Array.empty<string>
-            Bodyparts = Array.empty<string>
+            Individuals = Array.empty<Individual>
+            Bodyparts = Array.empty<Bodypart>
             Files = List.empty<string>
         |}
 

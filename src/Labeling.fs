@@ -15,8 +15,6 @@ open Browser.Types
 open Feliz.ReactDraggable
 open Feliz.UseListener
 
-type Bodypart = string
-type Individual = string
 type ProjectFile = { FileName: string; ImageBlob: Browser.Types.Blob; DisplayUrl: string }
 type LabelDrag = { Individual: Individual; Bodypart: Bodypart; X: float; Y: float }
 type ImageTransformation = { X: float; Y: float; Scale: float }
