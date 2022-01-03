@@ -27,7 +27,6 @@ type State = {
     SelectedImage: ProjectFile option
     SelectedLabel: (Individual * Bodypart)
     ImageTransformation: ImageTransformation
-    LabelDrag: LabelDrag
     PanZoom: PanZoom option
     ErrorMessage: string option }
 
@@ -43,7 +42,7 @@ type Msg =
     | OnImageTransform of ImageTransformation
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
-    | OnLabelDragStop of LabelDrag
+    | OnLabelDragStop
     | OnIndividualSelected of Individual
     | OnBodypartSelected of Bodypart
     | OnDeleteAnnotation of (Individual * Bodypart)
@@ -60,7 +59,6 @@ let init (props: Props) = {
         SelectedImage = None;
         SelectedLabel = (props.Config.Individuals.[0], props.Config.Multianimalbodyparts.[0])
         ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 }
-        LabelDrag = { Individual = ""; Bodypart = ""; X = 0.; Y = 0.}
         PanZoom = None;
         ErrorMessage = None }, Cmd.none
 
@@ -132,7 +130,7 @@ let updateLabeledData selectedImage (labeledData: LabeledData list) drag =
                                                     (fun b -> 
                                                         match b with
                                                         | Some (Some c)-> 
-                                                            Some (Some {X = drag.X; Y = drag.Y})
+                                                            Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
                                                         | _ -> None)
                                                 |> Some
                                                 
@@ -160,7 +158,8 @@ let update props msg state =
     | OnImageTransform transform ->
         { state with ImageTransformation = transform}, Cmd.none
     | OnLabelDrag drag ->
-        { state with LabelDrag = drag }, Cmd.none
+        let updatedLabels = updateLabeledData state.SelectedImage state.LabeledData drag
+        {state with LabeledData = updatedLabels}, Cmd.none
     | OnLabelDragStart -> 
         match state.PanZoom with
         | Some pz -> 
@@ -169,15 +168,14 @@ let update props msg state =
         | None -> 
             printfn "no panzoom" |> ignore
         state, Cmd.none
-    | OnLabelDragStop drag -> 
+    | OnLabelDragStop -> 
         match state.PanZoom with
         | Some pz -> 
             printfn "+ pz resume"
             pz.resume()
         | None -> 
             printfn "no panzoom" |> ignore
-        let updatedLabels = updateLabeledData state.SelectedImage state.LabeledData drag
-        { state with LabeledData = updatedLabels }, Cmd.none
+        state, Cmd.none
     | OnIndividualSelected individual -> 
         let _, b = state.SelectedLabel
         { state with SelectedLabel = (individual, b) }, Cmd.none
@@ -294,7 +292,7 @@ let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates
         draggable.child circle
         draggable.scale scale
         draggable.onDrag (fun _ d ->
-            printfn "lastX = %f deltaX = %f, x = %f, coord = %f" d.lastX d.deltaX d.x coordinate.X
+            // printfn "lastX = %f deltaX = %f, x = %f, coord = %f" d.lastX d.deltaX d.x coordinate.X
             { Individual = individual; Bodypart = bodypart; X = d.x; Y = d.y } |> OnLabelDrag |> dispatch
         )
         draggable.onStart (fun _ _ ->
@@ -303,26 +301,22 @@ let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates
         )
         draggable.onStop (fun c d ->
             printfn "- drag stopped"
-            printfn "lastX = %f deltaX = %f, x = %f, coord = %f" d.lastX d.deltaX d.x coordinate.X
-            // let canvasElement = d.node :?> HTMLElement
-            // let context = canvasElement.getContext_2d ()
-            // context.translate (1, 1)
-            { Individual = individual; Bodypart = bodypart; X = coordinate.X + d.x; Y = coordinate.Y + d.y } |> OnLabelDragStop |> dispatch
+            OnLabelDragStop |> dispatch
         )
     ]
 
 let getSvgLine (c1: Coordinates) (c2: Coordinates) strokeColor (opacity: float) = 
     Svg.line [
-        svg.x1 c1.X
-        svg.y1 c1.Y
-        svg.x2 c2.X
-        svg.y2 c2.Y
+        svg.x1 (c1.X + c1.OffsetX)
+        svg.y1 (c1.Y + c1.OffsetY)
+        svg.x2 (c2.X + c2.OffsetX)
+        svg.y2 (c2.Y + c2.OffsetY)
         svg.stroke strokeColor
         svg.strokeOpacity opacity
         svg.strokeWidth 2
     ]
 
-let svgElements dispatch transform (config: MinimalConfig) (labeledData: LabeledData list) selectedImage (labelDrag: LabelDrag) =
+let svgElements dispatch transform (config: MinimalConfig) (labeledData: LabeledData list) selectedImage =
     match selectedImage with
     | Some image ->
         match labeledData with
@@ -353,14 +347,7 @@ let svgElements dispatch transform (config: MinimalConfig) (labeledData: Labeled
                                 config.Skeleton 
                                 |> Array.map (fun xs ->
                                     xs 
-                                    |> Array.map (fun x -> 
-                                        if individual.ContainsKey x then
-                                            match (i, x, individual.[x]) with
-                                            | di, db, Some c when di = labelDrag.Individual && db = labelDrag.Bodypart -> Some { c with X = c.X + labelDrag.X; Y = c.Y + labelDrag.Y }
-                                            | _, _, c -> c
-                                        else
-                                            None
-                                    )
+                                    |> Array.map (fun x -> individual.[x])
                                     |> Array.pairwise
                                     |> Array.choose (fun (c1, c2) -> 
                                         match (c1, c2) with
@@ -488,7 +475,7 @@ let LabelingCanvas props =
                                         svg.viewBox (0, 0, 1920, 1080) // TODO: get actual image size
                                         prop.style [ style.position.absolute; style.zIndex 100 ] :?> ISvgAttribute
                                         svg.children [
-                                            yield! (svgElements dispatch state.ImageTransformation state.Config state.LabeledData state.SelectedImage state.LabelDrag)
+                                            yield! (svgElements dispatch state.ImageTransformation state.Config state.LabeledData state.SelectedImage)
                                         ]
                                     ]
                                     Html.img [
