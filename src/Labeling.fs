@@ -43,7 +43,7 @@ type Msg =
     | OnImageTransform of ImageTransformation
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
-    | OnLabelDragStop
+    | OnLabelDragStop of LabelDrag
     | OnIndividualSelected of Individual
     | OnBodypartSelected of Bodypart
     | OnDeleteAnnotation of (Individual * Bodypart)
@@ -112,6 +112,39 @@ let download fileName fileContent =
     anchor.setAttribute("download", fileName)
     anchor.click()
 
+let updateLabeledData selectedImage (labeledData: LabeledData list) drag = 
+    match selectedImage with
+    | Some image ->
+        match labeledData with
+        | [] -> labeledData
+        | _ -> labeledData |> List.map (fun x ->
+                    match x.FileName with 
+                    | EndsWith image.FileName _ -> 
+                        let labels = x.Labels 
+                                    |> Map.change 
+                                        drag.Individual
+                                        (fun i -> 
+                                            match i with 
+                                            | Some i -> 
+                                                i 
+                                                |> Map.change
+                                                    drag.Bodypart
+                                                    (fun b -> 
+                                                        match b with
+                                                        | Some (Some c)-> 
+                                                            Some (Some {X = drag.X; Y = drag.Y})
+                                                        | _ -> None)
+                                                |> Some
+                                                
+                                            | None -> None
+                                        )
+
+                        { FileName = x.FileName; Labels = labels}
+                    | _ -> x
+                )
+
+    | None -> labeledData
+
 let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
@@ -136,14 +169,15 @@ let update props msg state =
         | None -> 
             printfn "no panzoom" |> ignore
         state, Cmd.none
-    | OnLabelDragStop -> 
+    | OnLabelDragStop drag -> 
         match state.PanZoom with
         | Some pz -> 
             printfn "+ pz resume"
             pz.resume()
         | None -> 
             printfn "no panzoom" |> ignore
-        state, Cmd.none
+        let updatedLabels = updateLabeledData state.SelectedImage state.LabeledData drag
+        { state with LabeledData = updatedLabels }, Cmd.none
     | OnIndividualSelected individual -> 
         let _, b = state.SelectedLabel
         { state with SelectedLabel = (individual, b) }, Cmd.none
@@ -260,16 +294,20 @@ let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates
         draggable.child circle
         draggable.scale scale
         draggable.onDrag (fun _ d ->
+            printfn "lastX = %f deltaX = %f, x = %f, coord = %f" d.lastX d.deltaX d.x coordinate.X
             { Individual = individual; Bodypart = bodypart; X = d.x; Y = d.y } |> OnLabelDrag |> dispatch
-            // printfn "%f %f" d.x d.y
         )
         draggable.onStart (fun _ _ ->
             printfn "+ drag started"
             OnLabelDragStart |> dispatch
         )
-        draggable.onStop (fun _ _ ->
+        draggable.onStop (fun c d ->
             printfn "- drag stopped"
-            OnLabelDragStop |> dispatch
+            printfn "lastX = %f deltaX = %f, x = %f, coord = %f" d.lastX d.deltaX d.x coordinate.X
+            // let canvasElement = d.node :?> HTMLElement
+            // let context = canvasElement.getContext_2d ()
+            // context.translate (1, 1)
+            { Individual = individual; Bodypart = bodypart; X = coordinate.X + d.x; Y = coordinate.Y + d.y } |> OnLabelDragStop |> dispatch
         )
     ]
 
