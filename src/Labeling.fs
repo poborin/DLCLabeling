@@ -292,7 +292,7 @@ let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates
         draggable.child circle
         draggable.scale scale
         draggable.onDrag (fun _ d ->
-            // printfn "lastX = %f deltaX = %f, x = %f, coord = %f" d.lastX d.deltaX d.x coordinate.X
+            printfn "x=%f y=%f" coordinate.X coordinate.Y
             { Individual = individual; Bodypart = bodypart; X = d.x; Y = d.y } |> OnLabelDrag |> dispatch
         )
         draggable.onStart (fun _ _ ->
@@ -374,6 +374,7 @@ let LabelingCanvas props =
     React.useListener.onContextMenu(fun ev ->
         ev.preventDefault()
     )
+
 
     Html.div [
         Bulma.navbar [
@@ -463,7 +464,14 @@ let LabelingCanvas props =
                                     style.userSelect.none
                                 ]
                                 prop.onContextMenu (fun ev ->
-                                    printfn "click"
+                                    let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
+                                    let scale = image.clientWidth / image.naturalWidth * state.ImageTransformation.Scale
+                                    let offsetX = image.getBoundingClientRect().left
+                                    let offsetY = image.getBoundingClientRect().top
+                                    let x = (ev.clientX - offsetX) / scale
+                                    let y = (ev.clientY - offsetY) / scale
+
+                                    ()
                                 )
                                 prop.children [
                                     Svg.svg [
