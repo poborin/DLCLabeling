@@ -347,7 +347,11 @@ let svgElements dispatch transform (config: MinimalConfig) (labeledData: Labeled
                                 config.Skeleton 
                                 |> Array.map (fun xs ->
                                     xs 
-                                    |> Array.map (fun x -> individual.[x])
+                                    |> Array.map (fun x ->
+                                        match individual |> Map.containsKey x with
+                                        | true -> individual.[x]
+                                        | false -> None
+                                    )
                                     |> Array.pairwise
                                     |> Array.choose (fun (c1, c2) -> 
                                         match (c1, c2) with
