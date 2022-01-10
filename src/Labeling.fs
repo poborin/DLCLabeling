@@ -124,36 +124,52 @@ let findLabels selectedImage (labeledData: LabeledData list) map =
     | None -> labeledData
 
 let updateLabeledData selectedImage labeledData drag = 
+    let updateLabel drag (labels: Map<Individual,Map<Bodypart,option<Coordinates>>>) =
+        let newValue =
+            labels.[drag.Individual]
+            |> Map.change
+                drag.Bodypart
+                (fun b -> 
+                    match b with
+                    | Some (Some c) -> Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
+                    | _ -> None)
+        labels |> Map.change
+                    drag.Individual
+                    (fun i -> 
+                        match i with 
+                        | Some i -> Some newValue
+                        | None -> None)
+    
     let map x = 
-        let labels = x.Labels 
-                    |> Map.change 
-                        drag.Individual
-                        (fun i -> 
-                            match i with 
-                            | Some i -> 
-                                i 
-                                |> Map.change
-                                    drag.Bodypart
-                                    (fun b -> 
-                                        match b with
-                                        | Some (Some c)-> 
-                                            Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
-                                        | _ -> None)
-                                |> Some
+        // let labels = x.Labels 
+        //             |> Map.change 
+        //                 drag.Individual
+        //                 (fun i -> 
+        //                     match i with 
+        //                     | Some i -> 
+        //                         i 
+        //                         |> Map.change
+        //                             drag.Bodypart
+        //                             (fun b -> 
+        //                                 match b with
+        //                                 | Some (Some c)-> 
+        //                                     Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
+        //                                 | _ -> None)
+        //                         |> Some
                                 
-                            | None -> None
-                        )
-
-        { x with Labels = labels}
+        //                     | None -> None
+        //                 )
+        let newLabels = updateLabel drag x.Labels
+        { x with Labels = newLabels}
 
     findLabels selectedImage labeledData map
 
 let addNewLabeledData selectedImage labeledData newLabel =
     let addNewLabel (individual, bodypart, coordinates) (labels: Map<Individual,Map<Bodypart,option<Coordinates>>>) =
-        let newvalue =
+        let newValue =
             labels.[individual]
             |> Map.add bodypart coordinates
-        labels |> Map.add individual newvalue
+        labels |> Map.add individual newValue
     
     let map x =
         let newLabels = addNewLabel newLabel x.Labels
