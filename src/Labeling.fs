@@ -141,24 +141,6 @@ let updateLabeledData selectedImage labeledData drag =
                         | None -> None)
     
     let map x = 
-        // let labels = x.Labels 
-        //             |> Map.change 
-        //                 drag.Individual
-        //                 (fun i -> 
-        //                     match i with 
-        //                     | Some i -> 
-        //                         i 
-        //                         |> Map.change
-        //                             drag.Bodypart
-        //                             (fun b -> 
-        //                                 match b with
-        //                                 | Some (Some c)-> 
-        //                                     Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
-        //                                 | _ -> None)
-        //                         |> Some
-                                
-        //                     | None -> None
-        //                 )
         let newLabels = updateLabel drag x.Labels
         { x with Labels = newLabels}
 
@@ -174,6 +156,8 @@ let addNewLabeledData selectedImage labeledData newLabel =
     let map x =
         let newLabels = addNewLabel newLabel x.Labels
         { x with Labels = newLabels}
+
+    // TODO: check if the coordinate exists
     
     findLabels selectedImage labeledData map
 
@@ -416,7 +400,6 @@ let LabelingCanvas props =
         ev.preventDefault()
     )
 
-
     Html.div [
         Bulma.navbar [
             Bulma.color.isPrimary
@@ -507,12 +490,15 @@ let LabelingCanvas props =
                                 prop.onContextMenu (fun ev ->
                                     let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
                                     let scale = image.clientWidth / image.naturalWidth * state.ImageTransformation.Scale
-                                    let offsetX = image.getBoundingClientRect().left
-                                    let offsetY = image.getBoundingClientRect().top
-                                    let x = (ev.clientX - offsetX) / scale
-                                    let y = (ev.clientY - offsetY) / scale
+                                    let boundingRect = image.getBoundingClientRect()
 
-                                    ()
+                                    let (individual, bodypart) = state.SelectedLabel
+                                    let coordinates = { X = (ev.clientX - boundingRect.left) / scale;
+                                                        Y = (ev.clientY - boundingRect.top) / scale;
+                                                        OffsetX = 0.0;
+                                                        OffsetY = 0.0}
+
+                                    OnNewAnnotation (individual, bodypart, Some coordinates) |> dispatch
                                 )
                                 prop.children [
                                     Svg.svg [
