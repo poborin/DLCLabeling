@@ -46,6 +46,7 @@ type Msg =
     | OnIndividualSelected of Individual
     | OnBodypartSelected of Bodypart
     | OnDeleteAnnotation of (Individual * Bodypart)
+    | OnNewAnnotation of (Individual * Bodypart * Coordinates option)
     | CreatePanZoom of PanZoom
     | GenerateCSV
     | SaveCSV of string
@@ -110,38 +111,55 @@ let download fileName fileContent =
     anchor.setAttribute("download", fileName)
     anchor.click()
 
-let updateLabeledData selectedImage (labeledData: LabeledData list) drag = 
+let findLabels selectedImage (labeledData: LabeledData list) map =
     match selectedImage with
     | Some image ->
         match labeledData with
         | [] -> labeledData
-        | _ -> labeledData |> List.map (fun x ->
-                    match x.FileName with 
-                    | EndsWith image.FileName _ -> 
-                        let labels = x.Labels 
-                                    |> Map.change 
-                                        drag.Individual
-                                        (fun i -> 
-                                            match i with 
-                                            | Some i -> 
-                                                i 
-                                                |> Map.change
-                                                    drag.Bodypart
-                                                    (fun b -> 
-                                                        match b with
-                                                        | Some (Some c)-> 
-                                                            Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
-                                                        | _ -> None)
-                                                |> Some
-                                                
-                                            | None -> None
-                                        )
-
-                        { FileName = x.FileName; Labels = labels}
-                    | _ -> x
-                )
-
+        | _ ->  labeledData |> List.map (fun x -> 
+                    match x.FileName  with
+                    | EndsWith image.FileName _ -> map x
+                    | _ -> x)
+                
     | None -> labeledData
+
+let updateLabeledData selectedImage labeledData drag = 
+    let map x = 
+        let labels = x.Labels 
+                    |> Map.change 
+                        drag.Individual
+                        (fun i -> 
+                            match i with 
+                            | Some i -> 
+                                i 
+                                |> Map.change
+                                    drag.Bodypart
+                                    (fun b -> 
+                                        match b with
+                                        | Some (Some c)-> 
+                                            Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
+                                        | _ -> None)
+                                |> Some
+                                
+                            | None -> None
+                        )
+
+        { x with Labels = labels}
+
+    findLabels selectedImage labeledData map
+
+let addNewLabeledData selectedImage labeledData newLabel =
+    let addNewLabel (individual, bodypart, coordinates) (labels: Map<Individual,Map<Bodypart,option<Coordinates>>>) =
+        let newvalue =
+            labels.[individual]
+            |> Map.add bodypart coordinates
+        labels |> Map.add individual newvalue
+    
+    let map x =
+        let newLabels = addNewLabel newLabel x.Labels
+        { x with Labels = newLabels}
+    
+    findLabels selectedImage labeledData map
 
 let update props msg state =
     match msg with 
@@ -185,6 +203,9 @@ let update props msg state =
     | OnDeleteAnnotation selectedLabel ->
         let labeledData = deleteSeletedLabel state selectedLabel
         {state with LabeledData = labeledData}, Cmd.none
+    | OnNewAnnotation newLabel ->
+        let newLabels = addNewLabeledData state.SelectedImage state.LabeledData newLabel
+        { state with LabeledData = newLabels }, Cmd.none
     | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
     | GenerateCSV -> 
         let encode = CSVData.AsyncEncode state.Config
