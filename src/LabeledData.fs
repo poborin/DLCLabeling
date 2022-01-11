@@ -4,23 +4,28 @@ open Utils
 open ConfigDecoder
 open System.Collections.Generic
 
+type Bodypart = string
+type Individual = string
+
 type Coordinates =
     { 
         X: double;
-        Y: double
+        Y: double;
+        OffsetX: double;
+        OffsetY: double;
     }
 
 type LabeledData = {
     FileName: string;
-    Labels: Map<string,Map<string, Coordinates option>>
+    Labels: Map<Individual,Map<Bodypart, Coordinates option>>
 } 
 
 type CSVData =
     static member AsyncDecode (csvFile: string) =
         let initRecord = {|
             Scorers = Array.empty<string>
-            Individuals = Array.empty<string>
-            Bodyparts = Array.empty<string>
+            Individuals = Array.empty<Individual>
+            Bodyparts = Array.empty<Bodypart>
             Files = List.empty<string>
         |}
 
@@ -42,7 +47,7 @@ type CSVData =
                                     |> Array.chunkBySize 2
                                     |> Array.map (fun pair -> 
                                         match (parseFloat pair.[0], parseFloat pair.[1]) with
-                                        | (Some x, Some y) -> Some { X = x; Y = y }
+                                        | (Some x, Some y) -> Some { X = x; Y = y; OffsetX = 0.0; OffsetY = 0.0 }
                                         | _ -> unbox None
                                     )
                                     |> Array.mapi (fun i x -> 
@@ -71,7 +76,7 @@ type CSVData =
 
             let coordinate c =
                 match c with
-                | Some c -> $"%f{c.X},%f{c.Y}"
+                | Some c -> $"%f{c.X + c.OffsetX},%f{c.Y + c.OffsetY}"
                 | None -> ","
 
             let scorerHeader = Array.create (individuals.Length * bodyparts.Length * 2) config.Scorer 
