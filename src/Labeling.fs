@@ -47,6 +47,7 @@ type Msg =
     | OnBodypartSelected of Bodypart
     | OnDeleteAnnotation of (Individual * Bodypart)
     | OnNewAnnotation of (Individual * Bodypart * Coordinates option)
+    | OnConfigUpdate of MinimalConfig
     | CreatePanZoom of PanZoom
     | GenerateCSV
     | SaveCSV of string
@@ -220,6 +221,8 @@ let update props msg state =
     | OnNewAnnotation newLabel ->
         let newLabels = addNewLabeledData state.SelectedImage state.LabeledData newLabel
         { state with LabeledData = newLabels }, Cmd.none
+    | OnConfigUpdate config ->
+        { state with Config = config }, Cmd.none
     | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
     | GenerateCSV -> 
         let encode = CSVData.AsyncEncode state.Config
@@ -304,14 +307,14 @@ let miniViews state dispathc =
         ]
     )
 
-let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates) (radius: int) (config: MinimalConfig) (opacity: float) =
+let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates) (config: MinimalConfig) =
     let circle = Svg.circle [
         svg.id $"%s{individual}.%s{bodypart}"
         svg.cx coordinate.X
         svg.cy coordinate.Y
-        svg.r radius
+        svg.r config.Dotsize
         svg.fill config.BodyColors.[bodypart]
-        svg.fillOpacity opacity
+        svg.fillOpacity config.Alphavalue
         svg.stroke config.IndividualColors.[individual]
         svg.strokeWidth 3
         prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
@@ -368,7 +371,7 @@ let svgElements dispatch transform (config: MinimalConfig) (labeledData: Labeled
                                     |> Array.choose (fun (b, c) -> 
                                         match c with
                                         | Some x -> 
-                                            getSvgCircle dispatch transform i b x 10 config 0.6 
+                                            getSvgCircle dispatch transform i b x config
                                             |> Some
                                         | _ -> None
                                     )
@@ -479,7 +482,43 @@ let LabelingCanvas props =
                     Bulma.delete [ prop.onClick (fun _ -> ToggleQuickView |> dispatch) ]
                 ]
                 QuickView.body [
-                    QuickView.block "TODO: display config parameters"
+                    QuickView.block [
+                        prop.children [
+                            Bulma.hero [
+                                Bulma.heroBody [
+                                    Html.p [
+                                        Html.strong "Labels size"
+                                    ]
+                                    Slider.slider [ 
+                                        slider.isFullWidth
+                                        color.isPrimary
+                                        prop.min 1
+                                        prop.max 24
+                                        prop.value state.Config.Dotsize
+                                        prop.onChange (fun v -> 
+                                            let config = { state.Config with Dotsize = v }
+                                            OnConfigUpdate config |> dispatch
+                                        )
+                                        ]
+                                    Html.p [
+                                        Html.strong "Labels opacity"
+                                    ]
+                                    Slider.slider [ 
+                                        slider.isFullWidth; 
+                                        color.isPrimary
+                                        prop.min 0.1
+                                        prop.max 1
+                                        prop.step 0.05
+                                        prop.value state.Config.Alphavalue
+                                        prop.onChange (fun v -> 
+                                            let config = { state.Config with Alphavalue = v }
+                                            OnConfigUpdate config |> dispatch
+                                        )
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]     
                 ]
             ]
         ]
