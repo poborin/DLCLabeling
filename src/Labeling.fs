@@ -98,7 +98,14 @@ let deleteSeletedLabel state label =
             let newLabels = grouped.Labels.Add (i, newIndivifdual)
             state.LabeledData |> List.map (fun x -> 
                 match x.FileName  with
-                | EndsWith file.FileName _ -> {FileName = x.FileName; Labels = newLabels}
+                | EndsWith file.FileName _ -> 
+                    let (individual, bodypart ) = label
+                    let circleId = $"%s{individual}.%s{bodypart}"
+                    let circle = Browser.Dom.document.getElementById(circleId)
+                    circle.removeAttribute("transform")
+                    circle.removeAttribute("class")
+                    
+                    { x with Labels = newLabels }
                 | _ -> x)
         | false -> state.LabeledData
         
@@ -131,7 +138,9 @@ let updateLabeledData selectedImage labeledData drag =
                 drag.Bodypart
                 (fun b -> 
                     match b with
-                    | Some (Some c) -> Some (Some { c with OffsetX = drag.X; OffsetY = drag.Y})
+                    | Some (Some c) -> 
+                        printfn "coordinates = %A,\ndeltaDrag = %A" c drag
+                        Some (Some { c with OffsetX = c.OffsetX + drag.X; OffsetY = c.OffsetY + drag.Y})
                     | _ -> None)
         labels |> Map.change
                     drag.Individual
@@ -154,10 +163,15 @@ let addNewLabeledData selectedImage labeledData newLabel =
         labels |> Map.add individual newValue
     
     let map x =
+        let (individual, bodypart, coordinates) = newLabel
         let newLabels = addNewLabel newLabel x.Labels
-        { x with Labels = newLabels}
-
-    // TODO: check if the coordinate exists
+        
+        match x.Labels.ContainsKey individual with
+        | true -> 
+            match x.Labels.[individual].ContainsKey bodypart with
+            | true -> x
+            | false -> { x with Labels = newLabels}
+        | false -> { x with Labels = newLabels}
     
     findLabels selectedImage labeledData map
 
@@ -313,8 +327,7 @@ let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates
         draggable.child circle
         draggable.scale scale
         draggable.onDrag (fun _ d ->
-            printfn "x=%f y=%f" coordinate.X coordinate.Y
-            { Individual = individual; Bodypart = bodypart; X = d.x; Y = d.y } |> OnLabelDrag |> dispatch
+            { Individual = individual; Bodypart = bodypart; X = d.deltaX; Y = d.deltaY } |> OnLabelDrag |> dispatch
         )
         draggable.onStart (fun _ _ ->
             printfn "+ drag started"
