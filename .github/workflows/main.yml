@@ -22,3 +22,40 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      # Cache NPM packages
+      - name: Cache NPM packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Cache NuGet's
+      - name: Cache NuGet's
+        uses: actions/cache@v2
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      # restore fable packages using NPM commands
+      - name: restore dependencies
+        run: |
+          npm ci
+          npm run prebuild
+
+      # build web app
+      - name: build web app
+        run: |
+          npm run build
+      
+      # upload artifact
+      - name: upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: labelingApp
+          path: dist/
+
+      
