@@ -479,7 +479,25 @@ let LabelingCanvas props =
                     Bulma.delete [ prop.onClick (fun _ -> ToggleQuickView |> dispatch) ]
                 ]
                 QuickView.body [
-                    QuickView.block "TODO: display config parameters"
+                    QuickView.block [
+                        prop.children [
+                            Bulma.hero [
+                                Bulma.heroBody [
+                                    Html.p [
+                                        Html.strong "Labels size"
+                                    ]
+                                    Slider.slider [ slider.isFullWidth; color.isPrimary ]
+                                    Html.p [
+                                        Html.strong "Labels opacity"
+                                    ]
+                                    Slider.slider [ slider.isFullWidth; color.isPrimary ]
+                                    Html.p [
+                                        Html.strong "Labels colors"
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]     
                 ]
             ]
         ]
