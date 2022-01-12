@@ -111,7 +111,12 @@ type CSVData =
                                         individuals
                                         |> Array.map (fun i -> 
                                             let group = d.Labels.[i]
-                                            bodyparts |> Array.map (fun b -> group.[b])
+                                            bodyparts
+                                            |> Array.map (fun b ->
+                                                match group.ContainsKey b with
+                                                | true -> group.[b]
+                                                | false -> None
+                                            )
                                         )
                                         |> Array.reduce Array.append
                                         |> Array.map coordinate
@@ -120,6 +125,5 @@ type CSVData =
                                     )
                         |> Array.append [|scorerHeader; individualsHeader; bodypartsHeader; coordiantesHeader|]
                         |> String.concat "\n"
-
             return res
         }
