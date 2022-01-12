@@ -169,7 +169,10 @@ let addNewLabeledData selectedImage labeledData newLabel =
         match x.Labels.ContainsKey individual with
         | true -> 
             match x.Labels.[individual].ContainsKey bodypart with
-            | true -> x
+            | true ->
+                match x.Labels.[individual].[bodypart] with 
+                | Some b -> x
+                | None -> { x with Labels = newLabels}
             | false -> { x with Labels = newLabels}
         | false -> { x with Labels = newLabels}
     
