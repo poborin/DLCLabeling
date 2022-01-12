@@ -43,8 +43,6 @@ type Msg =
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
     | OnLabelDragStop
-    // | OnIndividualSelected of Individual
-    // | OnBodypartSelected of Bodypart
     | OnLabelSelected of (Individual * Bodypart)
     | OnDeleteAnnotation of (Individual * Bodypart)
     | OnNewAnnotation of (Individual * Bodypart * Coordinates option)
@@ -306,18 +304,19 @@ let miniViews state dispathc =
 
 let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates) (config: MinimalConfig) =
     let circle = Svg.circle [
-        svg.id $"%s{individual}.%s{bodypart}"
-        svg.cx coordinate.X
-        svg.cy coordinate.Y
-        svg.r config.Dotsize
-        svg.fill config.BodyColors.[bodypart]
-        svg.fillOpacity config.Alphavalue
-        svg.stroke config.IndividualColors.[individual]
-        svg.strokeWidth 3
         prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
         svg.children [
             Svg.title $"%s{individual}\n%s{bodypart}"
         ]
+        svg.cx coordinate.X
+        svg.cy coordinate.Y
+        svg.fill config.BodyColors.[bodypart]
+        svg.fillOpacity config.Alphavalue
+        svg.id $"%s{individual}.%s{bodypart}"
+        svg.onClick (fun _ -> OnLabelSelected (individual, bodypart) |> dispatch)
+        svg.r config.Dotsize
+        svg.stroke config.IndividualColors.[individual]
+        svg.strokeWidth 3
     ] 
 
     let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
