@@ -597,7 +597,6 @@ let LabelingCanvas props =
                             let i = (e.target :?> Browser.Types.HTMLSelectElement).selectedIndex
                             let individual = state.Config.Individuals.[i]
                             let (_, bodypart) = state.SelectedLabel
-
                             OnLabelSelected (individual, bodypart) |> dispatch
                         )
                         prop.children [
