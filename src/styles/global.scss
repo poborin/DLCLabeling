@@ -1,0 +1,14 @@
+@import '~bulma';
+@import "~bulma-checkradio";
+@import "~bulma-slider";
+@import "~bulma-quickview";
+@import "~@creativebulma/bulma-divider";
+@import "~@fortawesome/fontawesome-free/css/all.min.css";
+
+.center-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+  }
