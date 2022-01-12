@@ -66,11 +66,17 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' }}
 
     steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      
       # download artifacts
       - name: download labeling app
         uses: actions/download-artifact@v2
         with:
           name: labeling-app
+
+      - name: Display structure of downloaded files
+        run: ls -R
 
       # deploy web app to github pages
       - name: Deploy 🚀
