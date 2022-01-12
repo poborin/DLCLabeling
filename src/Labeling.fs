@@ -43,8 +43,7 @@ type Msg =
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
     | OnLabelDragStop
-    | OnIndividualSelected of Individual
-    | OnBodypartSelected of Bodypart
+    | OnLabelSelected of (Individual * Bodypart)
     | OnDeleteAnnotation of (Individual * Bodypart)
     | OnNewAnnotation of (Individual * Bodypart * Coordinates option)
     | OnConfigUpdate of MinimalConfig
@@ -209,12 +208,8 @@ let update props msg state =
         | None -> 
             printfn "no panzoom" |> ignore
         state, Cmd.none
-    | OnIndividualSelected individual -> 
-        let _, b = state.SelectedLabel
-        { state with SelectedLabel = (individual, b) }, Cmd.none
-    | OnBodypartSelected bodypart ->
-        let i, _ = state.SelectedLabel
-        { state with SelectedLabel = (i, bodypart)}, Cmd.none
+    | OnLabelSelected selectedLabel ->
+        { state with SelectedLabel = selectedLabel}, Cmd.none
     | OnDeleteAnnotation selectedLabel ->
         let labeledData = deleteSeletedLabel state selectedLabel
         {state with LabeledData = labeledData}, Cmd.none
@@ -309,18 +304,19 @@ let miniViews state dispathc =
 
 let getSvgCircle dispatch transform individual bodypart (coordinate: Coordinates) (config: MinimalConfig) =
     let circle = Svg.circle [
-        svg.id $"%s{individual}.%s{bodypart}"
-        svg.cx coordinate.X
-        svg.cy coordinate.Y
-        svg.r config.Dotsize
-        svg.fill config.BodyColors.[bodypart]
-        svg.fillOpacity config.Alphavalue
-        svg.stroke config.IndividualColors.[individual]
-        svg.strokeWidth 3
         prop.style [ style.position.defaultStatic ] :?> ISvgAttribute
         svg.children [
             Svg.title $"%s{individual}\n%s{bodypart}"
         ]
+        svg.cx coordinate.X
+        svg.cy coordinate.Y
+        svg.fill config.BodyColors.[bodypart]
+        svg.fillOpacity config.Alphavalue
+        svg.id $"%s{individual}.%s{bodypart}"
+        svg.onClick (fun _ -> OnLabelSelected (individual, bodypart) |> dispatch)
+        svg.r config.Dotsize
+        svg.stroke config.IndividualColors.[individual]
+        svg.strokeWidth 3
     ] 
 
     let image = Browser.Dom.document.getElementById("canvasImage") :?> HTMLImageElement
@@ -600,7 +596,8 @@ let LabelingCanvas props =
                         prop.onChange(fun (e: Event) ->
                             let i = (e.target :?> Browser.Types.HTMLSelectElement).selectedIndex
                             let individual = state.Config.Individuals.[i]
-                            OnIndividualSelected individual |> dispatch
+                            let (_, bodypart) = state.SelectedLabel
+                            OnLabelSelected (individual, bodypart) |> dispatch
                         )
                         prop.children [
                             yield! state.Config.Individuals
@@ -627,7 +624,8 @@ let LabelingCanvas props =
                             yield! state.Config.Multianimalbodyparts 
                                     |> Array.map (fun x -> 
                                         let check = prop.onChange(fun (b: String) -> 
-                                            OnBodypartSelected b |> dispatch
+                                            let (individual, _) = state.SelectedLabel
+                                            OnLabelSelected (individual, b) |> dispatch
                                         )
                                         let props = match state.SelectedLabel with
                                                     | (_, b) when b = x -> [ prop.id x; prop.value x; prop.name "radio"; prop.custom("checked", "checked"); check]
