@@ -43,8 +43,9 @@ type Msg =
     | OnLabelDrag of LabelDrag
     | OnLabelDragStart
     | OnLabelDragStop
-    | OnIndividualSelected of Individual
-    | OnBodypartSelected of Bodypart
+    // | OnIndividualSelected of Individual
+    // | OnBodypartSelected of Bodypart
+    | OnLabelSelected of (Individual * Bodypart)
     | OnDeleteAnnotation of (Individual * Bodypart)
     | OnNewAnnotation of (Individual * Bodypart * Coordinates option)
     | OnConfigUpdate of MinimalConfig
@@ -209,12 +210,8 @@ let update props msg state =
         | None -> 
             printfn "no panzoom" |> ignore
         state, Cmd.none
-    | OnIndividualSelected individual -> 
-        let _, b = state.SelectedLabel
-        { state with SelectedLabel = (individual, b) }, Cmd.none
-    | OnBodypartSelected bodypart ->
-        let i, _ = state.SelectedLabel
-        { state with SelectedLabel = (i, bodypart)}, Cmd.none
+    | OnLabelSelected selectedLabel ->
+        { state with SelectedLabel = selectedLabel}, Cmd.none
     | OnDeleteAnnotation selectedLabel ->
         let labeledData = deleteSeletedLabel state selectedLabel
         {state with LabeledData = labeledData}, Cmd.none
@@ -600,7 +597,9 @@ let LabelingCanvas props =
                         prop.onChange(fun (e: Event) ->
                             let i = (e.target :?> Browser.Types.HTMLSelectElement).selectedIndex
                             let individual = state.Config.Individuals.[i]
-                            OnIndividualSelected individual |> dispatch
+                            let (_, bodypart) = state.SelectedLabel
+
+                            OnLabelSelected (individual, bodypart) |> dispatch
                         )
                         prop.children [
                             yield! state.Config.Individuals
@@ -627,7 +626,8 @@ let LabelingCanvas props =
                             yield! state.Config.Multianimalbodyparts 
                                     |> Array.map (fun x -> 
                                         let check = prop.onChange(fun (b: String) -> 
-                                            OnBodypartSelected b |> dispatch
+                                            let (individual, _) = state.SelectedLabel
+                                            OnLabelSelected (individual, b) |> dispatch
                                         )
                                         let props = match state.SelectedLabel with
                                                     | (_, b) when b = x -> [ prop.id x; prop.value x; prop.name "radio"; prop.custom("checked", "checked"); check]
