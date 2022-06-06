@@ -226,7 +226,7 @@ let update props msg state =
         let encode = CSVData.AsyncEncode state.Config
         state, Cmd.OfAsync.either encode state.LabeledData SaveCSV LogError
     | SaveCSV csv-> 
-        download $"CollectedData_%s{state.Config.Scorer}" csv
+        download $"CollectedData_%s{state.Config.Scorer}.csv" csv
         state, Cmd.none
     | LogError e ->
         printfn "Error: %s" e.Message
