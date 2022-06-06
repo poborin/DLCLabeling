@@ -18,3 +18,5 @@ let parseFloat (s: string) =
     match Double.TryParse(s) with 
     | true, n -> Some n
     | _ -> None
+
+module Seq = let rec cycle xs = seq { yield! xs; yield! cycle xs }
