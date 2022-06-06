@@ -257,8 +257,6 @@ let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
     | _ -> ()
 
 let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
-    dispatch EmptyState
-
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
         | EndsWith ".png" _ -> true
@@ -445,7 +443,8 @@ let LabelingCanvas props =
                                             prop.custom ("webkitdirectory", "true")
                                             prop.type'.file
                                             prop.className "file-input"
-                                            prop.onChange (fun ev -> 
+                                            prop.onChange (fun ev ->
+                                                dispatch EmptyState
                                                 loadProjectFiles dispatch ev
                                             )
                                         ]
