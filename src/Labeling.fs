@@ -35,6 +35,7 @@ type Props = {| Config: MinimalConfig |}
 type Msg = 
     | AddPanZoom
     | ToggleQuickView
+    | EmptyState
     | ImageLoaded of ProjectFile
     | CSVLoaded of string
     | SelectImage of ProjectFile
@@ -52,16 +53,19 @@ type Msg =
     | SaveCSV of string
     | LogError of exn
 
-let init (props: Props) = { 
-        Config = props.Config; 
-        ShowQuickView = false; 
-        LoadedImages = List.empty;
-        LabeledData = List.empty;
-        SelectedImage = None;
-        SelectedLabel = (props.Config.Individuals.[0], props.Config.Multianimalbodyparts.[0])
-        ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 }
-        PanZoom = None;
-        ErrorMessage = None }, Cmd.none
+let emptyState (config) = {
+    Config = config; 
+    ShowQuickView = false; 
+    LoadedImages = List.empty;
+    LabeledData = List.empty;
+    SelectedImage = None;
+    SelectedLabel = (config.Individuals.[0], config.Multianimalbodyparts.[0]);
+    ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 };
+    PanZoom = None;
+    ErrorMessage = None }
+
+let init (props: Props) = 
+    emptyState(props.Config), Cmd.none
 
 let onPanZoom (pz: PanZoom) dispatch =
     pz.on "transform" (fun e -> 
@@ -182,6 +186,7 @@ let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
+    | EmptyState -> state.Config |> emptyState, Cmd.none
     | ImageLoaded file -> 
         { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
     | CSVLoaded content ->
@@ -251,7 +256,9 @@ let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
         reader.readAsText(blob)
     | _ -> ()
 
-let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =    
+let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
+    dispatch EmptyState
+
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
         | EndsWith ".png" _ -> true
