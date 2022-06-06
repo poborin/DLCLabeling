@@ -48,6 +48,7 @@ type Msg =
     | OnDeleteAnnotation of (Individual * Bodypart)
     | OnNewAnnotation of (Individual * Bodypart * Coordinates option)
     | OnConfigUpdate of MinimalConfig
+    | OnSelectNextBodyPart of (Individual * Bodypart)
     | CreatePanZoom of PanZoom
     | GenerateCSV
     | SaveCSV of string
@@ -226,6 +227,11 @@ let update props msg state =
         { state with LabeledData = newLabels }, Cmd.none
     | OnConfigUpdate config ->
         { state with Config = config }, Cmd.none
+    | OnSelectNextBodyPart label -> 
+        let i, b = label
+        let index = state.Config.Multianimalbodyparts |> Seq.findIndex (fun s -> s = b)
+        let nextBodyPart = Seq.cycle state.Config.Multianimalbodyparts |> Seq.item (index + 1)
+        { state with SelectedLabel = (i, nextBodyPart) }, Cmd.none
     | CreatePanZoom pz -> { state with PanZoom = Some pz }, Cmd.none
     | GenerateCSV -> 
         let encode = CSVData.AsyncEncode state.Config
@@ -413,8 +419,13 @@ let LabelingCanvas props =
 
     React.useListener.onKeyDown(fun ev ->
         match ev.key with
-        | "Backspace" | "Delete" -> OnDeleteAnnotation state.SelectedLabel |> dispatch
-        | x -> printfn "%s" x
+        | "Backspace" | "Delete" -> 
+            OnDeleteAnnotation state.SelectedLabel |> dispatch
+        | "Tab" -> 
+            ev.preventDefault()
+            OnSelectNextBodyPart state.SelectedLabel |> dispatch
+        | x -> 
+            printfn "%s" x
     )
     React.useListener.onContextMenu(fun ev ->
         ev.preventDefault()
