@@ -9,9 +9,9 @@ nuget Feliz.Bulma.Slider
 nuget Feliz.ElmishComponents
 nuget Feliz.UseElmish
 nuget FSharp.Core
-nuget Fable.DateFunctions 3.7.0
-nuget Fable.Mocha 2.9.1
-nuget Feliz 1.52.0
-nuget Feliz.Router 3.8.0
+nuget Fable.DateFunctions
+nuget Fable.Mocha
+nuget Feliz
+nuget Feliz.Router
 nuget Thoth.Json
 nuget YamlDotNet
