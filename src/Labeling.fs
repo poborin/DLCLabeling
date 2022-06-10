@@ -162,7 +162,7 @@ let updateLabeledData selectedImage labeledData drag =
 let addNewLabeledData selectedImage labeledData newLabel =
     let addNewLabel (individual, bodypart, coordinates) (labels: Map<Individual,Map<Bodypart,option<Coordinates>>>) =
         let newValue =
-            labels[individual]
+            labels.[individual]
             |> Map.add bodypart coordinates
         labels |> Map.add individual newValue
     
