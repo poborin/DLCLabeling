@@ -13,6 +13,11 @@ let (|Prefix|_|) (p:string) (s:string) =
         Some(s.Substring(p.Length))
     else
         None
+
+let (|Int|_|) (str:string) =
+    match System.Int32.TryParse str with
+    | true,int -> Some int
+    | _ -> None
         
 let parseFloat (s: string) =
     match Double.TryParse(s) with 
