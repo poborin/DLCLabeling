@@ -35,9 +35,8 @@ type Props = {| Config: MinimalConfig |}
 type Msg = 
     | AddPanZoom
     | ToggleQuickView
-    | EmptyState
-    | ImageLoaded of ProjectFile
-    | CSVLoaded of string
+    | EmptyState of string array
+    | ImageLoaded of (ProjectFile * int)
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
     | OnImageTransform of ImageTransformation
@@ -54,11 +53,11 @@ type Msg =
     | SaveCSV of string
     | LogError of exn
 
-let emptyState (config) = {
+let emptyState (config, labeledData ) = {
     Config = config; 
     ShowQuickView = false; 
     LoadedImages = List.empty;
-    LabeledData = List.empty;
+    LabeledData = labeledData;
     SelectedImage = None;
     SelectedLabel = (config.Individuals.[0], config.Multianimalbodyparts.[0]);
     ImageTransformation = { X = 0.0; Y = 0.0; Scale = 1.0 };
@@ -66,7 +65,7 @@ let emptyState (config) = {
     ErrorMessage = None }
 
 let init (props: Props) = 
-    emptyState(props.Config), Cmd.none
+    emptyState(props.Config, list.Empty), Cmd.none
 
 let onPanZoom (pz: PanZoom) dispatch =
     pz.on "transform" (fun e -> 
@@ -187,15 +186,33 @@ let update props msg state =
     match msg with 
     | AddPanZoom -> state, Cmd.none
     | ToggleQuickView -> { state with ShowQuickView = not state.ShowQuickView }, Cmd.none
-    | EmptyState -> state.Config |> emptyState, Cmd.none
-    | ImageLoaded file -> 
-        { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, selectLoadedFile state file
-    | CSVLoaded content ->
-        state, Cmd.OfAsync.either CSVData.AsyncDecode content DisplayLabels LogError
+    | EmptyState images -> 
+        let labeledData = 
+            images
+            |> Array.map (fun x ->
+                let labels =
+                    state.Config.Individuals
+                    |> Array.map (fun i -> (i, Map.empty))
+                    |> Map.ofArray
+                { FileName = x; Labels = labels })
+            |> Array.toList
+        emptyState(state.Config, labeledData), Cmd.none
+    | ImageLoaded (file, index) -> 
+        let cmd =
+            match index with
+            | 0 -> selectLoadedFile state file
+            | _ -> Cmd.none
+        { state with LoadedImages = state.LoadedImages |> List.append [file] |> List.sortBy (fun x -> x.FileName) }, cmd
     | SelectImage file -> 
         { state with SelectedImage = Some file }, Cmd.none
     | DisplayLabels labels ->
-        { state with LabeledData = labels }, Cmd.none
+        let mergedLabels =
+            (state.LabeledData, labels)
+            ||> List.fold (fun acc elem ->
+                let alreadyContains = acc |> List.exists (fun item -> item.FileName = elem.FileName)
+                if alreadyContains = true then acc
+                else elem :: acc)
+        { state with LabeledData = mergedLabels }, Cmd.none
     | OnImageTransform transform ->
         { state with ImageTransformation = transform}, Cmd.none
     | OnLabelDrag drag ->
@@ -243,41 +260,52 @@ let update props msg state =
         printfn "Error: %s" e.Message
         state, Cmd.none
 
-let loadFile dispatch (fileName: string, blob: Browser.Types.Blob) =
+let loadImage dispatch index (fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
+    reader.onload <- (fun ev ->
+        let disaplayUrl = ev.target?result
+        let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
+        dispatch ((file, index) |> ImageLoaded)
+    )
+    reader.readAsDataURL(blob)
 
-    match fileName with
-    | EndsWith ".png" _ ->
-        reader.onload <- (fun ev ->
-            let disaplayUrl = ev.target?result
-            let file = { FileName = fileName; ImageBlob = blob; DisplayUrl = disaplayUrl }
-            dispatch (ImageLoaded file)
-        )
-        reader.readAsDataURL(blob)
-    | EndsWith ".csv" _ ->
-        reader.onload <- (fun ev -> 
+let loadCsv dispatch file =
+    let reader = Browser.Dom.FileReader.Create()
+    reader.onload <- (fun ev -> 
             let text = ev.target?result
-            dispatch (CSVLoaded text)
+            dispatch (ev.target?result |> CSVData.Decode |> DisplayLabels)
         )
-        reader.readAsText(blob)
-    | _ -> ()
+
+    reader.readAsText(file)
+
+let resetLabelingState dispatch imageFiles =
+    let imageNames =
+        imageFiles
+        |> Array.map(fun (name, _) -> name)
+
+    dispatch (imageNames |> EmptyState)
 
 let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
     let isProjectFile (file: Browser.Types.File) =
         match file.name with
         | EndsWith ".png" _ -> true
-        | EndsWith ".csv" _ -> true
-        | EndsWith ".h5" _ -> true
         | _ -> false
 
     let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
 
     let fileList: Browser.Types.FileList = !!fileEvent.target?files
-    [|0 .. fileList.length - 1|] 
-    |> Array.rev
-    |> Array.filter (fileList.item >> isProjectFile)
-    |> Array.map (fileList.item >> fileNameBlob)
-    |> Array.iter (loadFile dispatch)
+
+    let imageFiles = 
+        [|0 .. fileList.length - 1|] 
+        |> Array.filter (fileList.item >> isProjectFile)
+        |> Array.map (fileList.item >> fileNameBlob)
+        |> Array.sortBy (fun (name, _) -> name)
+
+    imageFiles |> resetLabelingState dispatch
+    imageFiles |> Array.iteri (loadImage dispatch)
+
+    let csvIndex = [|0 .. fileList.length - 1|] |> Array.find (fileList.item >> (fun x -> x.name.EndsWith(".csv")))
+    fileList.Item(csvIndex) |> loadCsv dispatch
 
 let getFileDisplayUrl file =
     match file with
@@ -373,44 +401,47 @@ let svgElements dispatch transform (config: MinimalConfig) (labeledData: Labeled
                     | EndsWith image.FileName _ -> true
                     | _ -> false)
 
-                let circles = grouped.Labels
-                            |> Map.toArray
-                            |> Array.map (fun (i, m) -> 
-                                    m 
-                                    |> Map.toArray
-                                    |> Array.choose (fun (b, c) -> 
-                                        match c with
-                                        | Some x -> 
-                                            getSvgCircle dispatch transform i b x config
-                                            |> Some
-                                        | _ -> None
+                match grouped.Labels |> Map.isEmpty with
+                | true -> [| Html.none |]
+                | _ ->
+                    let circles = grouped.Labels
+                                |> Map.toArray
+                                |> Array.map (fun (i, m) -> 
+                                        m 
+                                        |> Map.toArray
+                                        |> Array.choose (fun (b, c) -> 
+                                            match c with
+                                            | Some x -> 
+                                                getSvgCircle dispatch transform i b x config
+                                                |> Some
+                                            | _ -> None
+                                        )
                                     )
-                                )
-                            |> Array.reduce Array.append
+                                |> Array.reduce Array.append
 
-                let lines = config.Individuals
-                            |> Array.map (fun i -> 
-                                let individual = grouped.Labels.[i]
-                                config.Skeleton 
-                                |> Array.map (fun xs ->
-                                    xs 
-                                    |> Array.map (fun x ->
-                                        match individual |> Map.containsKey x with
-                                        | true -> individual.[x]
-                                        | false -> None
+                    let lines = config.Individuals
+                                |> Array.map (fun i -> 
+                                    let individual = grouped.Labels.[i]
+                                    config.Skeleton 
+                                    |> Array.map (fun xs ->
+                                        xs 
+                                        |> Array.map (fun x ->
+                                            match individual |> Map.containsKey x with
+                                            | true -> individual.[x]
+                                            | false -> None
+                                        )
+                                        |> Array.pairwise
+                                        |> Array.choose (fun (c1, c2) -> 
+                                            match (c1, c2) with
+                                            | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
+                                            | _ -> unbox None
+                                        )
                                     )
-                                    |> Array.pairwise
-                                    |> Array.choose (fun (c1, c2) -> 
-                                        match (c1, c2) with
-                                        | Some c1, Some c2 -> getSvgLine c1 c2 "grey" 0.9 |> Some
-                                        | _ -> unbox None
-                                    )
+                                    |> Array.reduce Array.append
                                 )
                                 |> Array.reduce Array.append
-                            )
-                            |> Array.reduce Array.append
 
-                Array.concat [lines; circles]
+                    Array.concat [lines; circles]
     | None -> [| Html.none |]
 
 [<ReactComponent>]
@@ -455,7 +486,6 @@ let LabelingCanvas props =
                                             prop.type'.file
                                             prop.className "file-input"
                                             prop.onChange (fun ev ->
-                                                dispatch EmptyState
                                                 loadProjectFiles dispatch ev
                                             )
                                         ]

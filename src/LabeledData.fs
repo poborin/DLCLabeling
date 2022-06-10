@@ -21,7 +21,7 @@ type LabeledData = {
 } 
 
 type CSVData =
-    static member AsyncDecode (csvFile: string) =
+    static member Decode (csvFile: string) =
         let initRecord = {|
             Scorers = Array.empty<string>
             Individuals = Array.empty<Individual>
@@ -29,45 +29,45 @@ type CSVData =
             Files = List.empty<string>
         |}
 
-        async {
-            let lines = (initRecord, csvFile.Split([|'\n'|])) 
-                        ||> Array.fold (fun acc x -> 
-                            match x with
-                            | Prefix "scorer," rest -> {| acc with Scorers = rest.Split(',') |}
-                            | Prefix "individuals," rest -> {| acc with Individuals = rest.Split(',') |}
-                            | Prefix "bodyparts," rest -> {| acc with Bodyparts = rest.Split(',') |}
-                            | Prefix "coords" _ -> acc
-                            | "" -> acc
-                            | row -> {| acc with Files = acc.Files @ [row] |}
-                            )
 
-            return lines.Files |> List.map (fun x -> 
-                    let values = x.Split(',')
-                    let labels = values.[1 .. values.Length]
-                                    |> Array.chunkBySize 2
-                                    |> Array.map (fun pair -> 
-                                        match (parseFloat pair.[0], parseFloat pair.[1]) with
-                                        | (Some x, Some y) -> Some { X = x; Y = y; OffsetX = 0.0; OffsetY = 0.0 }
-                                        | _ -> unbox None
-                                    )
-                                    |> Array.mapi (fun i x -> 
-                                        let scorer = lines.Scorers.[i * 2 ]
-                                        let individual = lines.Individuals.[i * 2 ]
-                                        let bodypart = lines.Bodyparts.[i * 2]
-                                        {| Coordinates = x; Scorer = scorer; Individual = individual; Bodypart = bodypart |}
-                                    )
-                                    |> Array.groupBy (fun x -> x.Individual)
-                                    |> Array.map (fun (i, ls) -> 
-                                        let bs = ls 
-                                                |> Array.map (fun l -> (l.Bodypart, l.Coordinates))
-                                                |> Map.ofArray
-                                        (i, bs)
-                                    )
-                                    |> Map.ofArray
+        let lines = (initRecord, csvFile.Split([|'\n'|])) 
+                    ||> Array.fold (fun acc x -> 
+                        match x with
+                        | Prefix "scorer," rest -> {| acc with Scorers = rest.Split(',') |}
+                        | Prefix "individuals," rest -> {| acc with Individuals = rest.Split(',') |}
+                        | Prefix "bodyparts," rest -> {| acc with Bodyparts = rest.Split(',') |}
+                        | Prefix "coords" _ -> acc
+                        | "" -> acc
+                        | row -> {| acc with Files = acc.Files @ [row] |}
+                        )
 
-                    { FileName = values.[0]; Labels = labels }
-                )
-        }
+        lines.Files 
+            |> List.map (fun x -> 
+                let values = x.Split(',')
+                let labels = values.[1 .. values.Length]
+                                |> Array.chunkBySize 2
+                                |> Array.map (fun pair -> 
+                                    match (parseFloat pair.[0], parseFloat pair.[1]) with
+                                    | (Some x, Some y) -> Some { X = x; Y = y; OffsetX = 0.0; OffsetY = 0.0 }
+                                    | _ -> unbox None
+                                )
+                                |> Array.mapi (fun i x -> 
+                                    let scorer = lines.Scorers.[i * 2 ]
+                                    let individual = lines.Individuals.[i * 2 ]
+                                    let bodypart = lines.Bodyparts.[i * 2]
+                                    {| Coordinates = x; Scorer = scorer; Individual = individual; Bodypart = bodypart |}
+                                )
+                                |> Array.groupBy (fun x -> x.Individual)
+                                |> Array.map (fun (i, ls) -> 
+                                    let bs = ls 
+                                            |> Array.map (fun l -> (l.Bodypart, l.Coordinates))
+                                            |> Map.ofArray
+                                    (i, bs)
+                                )
+                                |> Map.ofArray
+
+                { FileName = values.[0]; Labels = labels }
+            )
 
     static member AsyncEncode config data =
         async {
