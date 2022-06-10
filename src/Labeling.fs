@@ -37,7 +37,6 @@ type Msg =
     | ToggleQuickView
     | EmptyState of string array
     | ImageLoaded of (ProjectFile * int)
-    // | CSVLoaded of string
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
     | OnImageTransform of ImageTransformation
@@ -163,7 +162,7 @@ let updateLabeledData selectedImage labeledData drag =
 let addNewLabeledData selectedImage labeledData newLabel =
     let addNewLabel (individual, bodypart, coordinates) (labels: Map<Individual,Map<Bodypart,option<Coordinates>>>) =
         let newValue =
-            labels.[individual]
+            labels[individual]
             |> Map.add bodypart coordinates
         labels |> Map.add individual newValue
     
@@ -190,7 +189,12 @@ let update props msg state =
     | EmptyState images -> 
         let labeledData = 
             images
-            |> Array.map (fun x -> { FileName = x; Labels = Map.empty })
+            |> Array.map (fun x ->
+                let labels =
+                    state.Config.Individuals
+                    |> Array.map (fun i -> (i, Map.empty))
+                    |> Map.ofArray
+                { FileName = x; Labels = labels })
             |> Array.toList
         emptyState(state.Config, labeledData), Cmd.none
     | ImageLoaded (file, index) -> 
