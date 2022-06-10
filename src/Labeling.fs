@@ -455,6 +455,13 @@ let LabelingCanvas props =
         | "Tab" -> 
             ev.preventDefault()
             OnSelectNextBodyPart state.SelectedLabel |> dispatch
+        | Int x ->
+            match x with
+            | i when i > 0 && i <= state.Config.Individuals.Length ->
+                let individual = state.Config.Individuals.[i - 1]
+                let (_, bodypart) = state.SelectedLabel
+                OnLabelSelected (individual, bodypart) |> dispatch
+            | i -> printfn "%i" i
         | x -> 
             printfn "%s" x
     )
