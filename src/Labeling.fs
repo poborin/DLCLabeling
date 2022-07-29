@@ -35,7 +35,7 @@ type Props = {| Config: MinimalConfig |}
 type Msg = 
     | AddPanZoom
     | ToggleQuickView
-    | EmptyState of string array
+    | EmptyState of (string * string * string) array
     | ImageLoaded of (ProjectFile * int)
     | SelectImage of ProjectFile
     | DisplayLabels of LabeledData list
@@ -260,7 +260,7 @@ let update props msg state =
         printfn "Error: %s" e.Message
         state, Cmd.none
 
-let loadImage dispatch index (fileName: string, blob: Browser.Types.Blob) =
+let loadImage dispatch index (_, _, fileName: string, blob: Browser.Types.Blob) =
     let reader = Browser.Dom.FileReader.Create()
     reader.onload <- (fun ev ->
         let disaplayUrl = ev.target?result
@@ -281,7 +281,7 @@ let loadCsv dispatch file =
 let resetLabelingState dispatch imageFiles =
     let imageNames =
         imageFiles
-        |> Array.map(fun (name, _) -> name)
+        |> Array.map(fun (dir, path, name, _) -> name)
 
     dispatch (imageNames |> EmptyState)
 
@@ -291,15 +291,18 @@ let loadProjectFiles dispatch (fileEvent: Browser.Types.Event) =
         | EndsWith ".png" _ -> true
         | _ -> false
 
-    let fileNameBlob (x: Browser.Types.File) = x.name, x.slice()
+    let filePathBlob (x: Browser.Types.File) =
+        let relativePath = x?webkitRelativePath :?> string
+        let path = System.IO.Path.GetDirectoryName(relativePath)
+        "labeled-data", path,  x.name, x.slice()
 
     let fileList: Browser.Types.FileList = !!fileEvent.target?files
 
     let imageFiles = 
         [|0 .. fileList.length - 1|] 
         |> Array.filter (fileList.item >> isProjectFile)
-        |> Array.map (fileList.item >> fileNameBlob)
-        |> Array.sortBy (fun (name, _) -> name)
+        |> Array.map (fileList.item >> filePathBlob)
+        |> Array.sortBy (fun (_, _, name, _) -> name)
 
     imageFiles |> resetLabelingState dispatch
     imageFiles |> Array.iteri (loadImage dispatch)

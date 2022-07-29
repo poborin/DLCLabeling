@@ -16,6 +16,8 @@ type Coordinates =
     }
 
 type LabeledData = {
+    LabelingFolder: string;
+    RelativePath: string;
     FileName: string;
     Labels: Map<Individual,Map<Bodypart, Coordinates option>>
 } 
